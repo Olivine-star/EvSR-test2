@@ -1,0 +1,3 @@
+simulation:
+    Ts: 1        # sampling time (ms)
+    tSample: 350 # time length of sample (ms)   
