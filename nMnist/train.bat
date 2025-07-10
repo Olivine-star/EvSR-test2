@@ -3,12 +3,12 @@ REM
 call conda activate EventSRSNN
 
 REM
-cd /d D:\PycharmProjects\pythonProject\EventSR\nMnist
+cd /d D:\VSCodeProject\EventSR\SR-ES1\test2\EventSR-main\nMnist
 
 REM
 python trainNmnist.py ^
 --bs 64 ^
---savepath "D:/PycharmProjects/EventSR-ckpt/ckpt2/" ^
+--savepath "D:/PycharmProjects/EventSR-ckpt/ckpt4/" ^
 --epoch 30 ^
 --showFreq 50 ^
 --lr 0.1 ^

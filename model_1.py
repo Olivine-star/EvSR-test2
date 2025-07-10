@@ -50,8 +50,8 @@ class NetworkBasic(torch.nn.Module):
     # 这段 forward 函数是 NetworkBasic 的前向传播逻辑，用于对输入的 脉冲张量（事件数据） 进行 时空建模和上采样重建。
     def forward(self, spikeInput):
         # 通过 slayer1.psp() 对输入进行电压膜电位建模
-        # print("=================================================================")
-        # print(spikeInput.shape)
+        print("=================================================================")
+        print(spikeInput.shape)
         psp1 = self.slayer1.psp(spikeInput)
 
         # 输入为 [B, C, H, W, T] 形状的 5D 张量，表示一批事件数据（脉冲流）。
@@ -199,13 +199,8 @@ class Network3(torch.nn.Module):
 
     def forward(self, spikeInput):
         psp1 = self.slayer1.psp(spikeInput)
-        # print("=================================================================")
-        # print(spikeInput.shape)
 
         B, C, H, W, T = spikeInput.shape
-        # print("=================================================================")
-        # print(psp1.shape)
-
         psp1_1 = psp1.permute((0, 1, 4, 2, 3))
         psp1_1 = psp1_1.reshape((B, C*T, H, W))
         psp1_1 = torch.nn.functional.interpolate(psp1_1, scale_factor=2, mode='bilinear')
