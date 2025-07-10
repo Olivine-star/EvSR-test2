@@ -6,7 +6,7 @@ REM
 cd /d D:\VSCodeProject\EventSR\SR-ES1\test2\EventSR-main\nMnist
 
 REM
-python trainNmnist.py ^
+python trainNmnist_1.py ^
 --bs 64 ^
 --savepath "D:/PycharmProjects/EventSR-ckpt/ckpt4/" ^
 --epoch 30 ^

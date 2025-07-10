@@ -29,8 +29,8 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 sys.path.append('../')
-from model_1 import NetworkBasic
-from nMnist.mnistDatasetSR_1 import mnistDataset
+from model import NetworkBasic
+from nMnist.mnistDatasetSR import mnistDataset
 from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
 from statistic import Metric
@@ -167,18 +167,14 @@ def main():
         trainMetirc = Metric()
         m.train()
         # 训练阶段（每 epoch）
-        for i, (eventLr_pos, eventLr_neg, eventHr) in enumerate(trainLoader, 0):
+        for i, (eventLr, eventHr) in enumerate(trainLoader, 0):
             # eventLr, eventHr 是低分辨率和高分辨率事件张量。
             # eventLr, eventHr 是从 trainDataset 中按批加载的数据
             # 它们来自你自定义的 mnistDataset 类的返回结果
             # 通常是形如 [B, 2, H, W, T] 的 5D 张量对，用于超分任务训练
-            eventLr_pos, eventLr_neg, eventHr = eventLr_pos.to(device), eventLr_neg.to(device), eventHr.to(device)
+            eventLr, eventHr = eventLr.to(device), eventHr.to(device)
             # 模型前向传播，输出结果。
-            output_pos = m(eventLr_pos)
-            output_neg = m(eventLr_neg)
-            # output = 0.5 * (output_pos + output_neg)
-            output = output_pos + output_neg
-
+            output = m(eventLr)
 
             # 计算损失函数。
             loss = MSE(output, eventHr)
@@ -196,7 +192,7 @@ def main():
             # 训练进度记录。每 showFreq 次迭代，记录一次当前指标，如损失、脉冲数量、预计剩余训练时间。
             if i % showFreq == 0:
                 trainMetirc.updateIter(loss.item(), loss_ecm.item(), loss_total.item(), 1,
-                                       eventLr_pos.sum().item() + eventLr_neg.sum().item(), output.sum().item(), eventHr.sum().item())
+                                       eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
                 print_progress(epoch, maxEpoch, i, iter_per_epoch, bs, trainMetirc, time_last, "Train", log_training)
                 time_last = datetime.datetime.now()
 
@@ -209,15 +205,11 @@ def main():
             m.eval()
             t = datetime.datetime.now()
             valMetirc = Metric()
-            for i, (eventLr_pos, eventLr_neg, eventHr) in enumerate(testLoader, 0):
+            for i, (eventLr, eventHr) in enumerate(testLoader, 0):
                 # 禁用梯度计算，提高推理速度
                 with torch.no_grad():
-                    eventLr_pos, eventLr_neg, eventHr = eventLr_pos.to(device), eventLr_neg.to(device), eventHr.to(device)
-
-                    output_pos = m(eventLr_pos)
-                    output_neg = m(eventLr_neg)
-                    # output = 0.5 * (output_pos + output_neg)
-                    output = output_pos + output_neg
+                    eventLr, eventHr = eventLr.to(device), eventHr.to(device)
+                    output = m(eventLr)
 
                     loss = MSE(output, eventHr)
                     loss_ecm = sum([MSE(torch.sum(output[:, :, :, :, i*50:(i+1)*50], dim=4),
@@ -225,7 +217,7 @@ def main():
                     loss_total = loss + loss_ecm
                     #  将当前验证轮次中一个 batch 的各类指标传入 valMetirc 进行统计与记录，用于后续计算平均损失、脉冲数量等评估结果。
                     valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_total.item(), 1,
-                                         eventLr_pos.sum().item() + eventLr_neg.sum().item(), output.sum().item(), eventHr.sum().item())
+                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
 
                     if i % showFreq == 0:
                         print_progress(epoch, maxEpoch, i, len(testDataset) // bs, bs, valMetirc, time_last, "Val", log_training)
