@@ -62,7 +62,7 @@ def main():
     变成内部的：sys.argv = ['trainNmnist.py', '--bs', '64', '--lr', '0.1']
     argparse 默认就是解析这个 sys.argv，所以你不需要显式传递，称之为“隐式传参”是非常合理的 ✅。
     .bat 文件中写的参数是通过系统调用自动传递到 Python 的 sys.argv 中的，
-    argparse会隐式解析这些值并转换类型、设定默认值，从而使得你的 Python 脚本无需手动读取命令行参数就可以直接用。
+    argparse会隐式解析这些值并转换类型、设定默认值，从而使得你的 Python 脚本无需手动读取命令行参数就可以直接用。.
 
     """
     args = parser.parse_args()
