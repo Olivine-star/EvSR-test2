@@ -75,7 +75,7 @@ def main():
 
     # 创建训练数据集，读取训练数据集文件路径
     trainDataset = mnistDataset()
-    # 创建测试数据集，读取训练测试集文件路径（False表明是测试集）
+    # 创建测试数据集，读取训练测试集文件路径（False表明是测试集）..
     testDataset = mnistDataset(False)
 
     print("Training sample: %d, Testing sample: %d" % (len(trainDataset), len(testDataset)))
