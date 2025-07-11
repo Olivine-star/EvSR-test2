@@ -70,21 +70,20 @@ from slayerSNN.spikeFileIO import event
 
 
 
-def readNpSpikes(filename, split_polarity=False, timeUnit=1e-3):
+def readNpSpikes(filename, invert_polarity=False,  timeUnit=1e-3):
     npEvent = np.load(filename)
 
-    if split_polarity:
-        pos = npEvent[npEvent[:, 3] == 1]
-        neg = npEvent[npEvent[:, 3] == 0]
+    if invert_polarity:
+
+        ev_non_inverse = event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
+
+        npEvent[:, 3] = 1 - npEvent[:, 3]
         
-
-        ev_pos = event(pos[:, 1], pos[:, 2], pos[:, 3], pos[:, 0] * timeUnit * 1e3)
-        ev_neg = event(neg[:, 1], neg[:, 2], neg[:, 3], neg[:, 0] * timeUnit * 1e3)
+        ev_inverse = event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
 
 
 
-
-        return ev_pos, ev_neg  # 新增原始数组返回
+        return ev_non_inverse ,ev_inverse  
     else:
         return event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
 
@@ -146,18 +145,18 @@ class mnistDataset(Dataset):
 
         # 读取高分辨率事件列表中的第idx个事件,readNpSpikes 函数用于读取这些文件，并将其转换为 event 对象
         # 👉 低分辨率事件：分开正负极性
-        eventLr_pos, eventLr_neg = readNpSpikes(self.lrList[idx], split_polarity=True)
+        ev_non_inverse ,ev_inverse = readNpSpikes(self.lrList[idx], invert_polarity=True)
 
         # 👉 保证极性为通道 0
-        eventLr_pos.p[:] = 0
-        eventLr_neg.p[:] = 0
+        ev_non_inverse.p[:] = 0
+        ev_inverse.p[:] = 0
 
         # 👉 高分辨率事件：整体读取，不分极性
-        eventHr = readNpSpikes(self.hrList[idx], split_polarity=False)
+        eventHr = readNpSpikes(self.hrList[idx], invert_polarity=False)
 
         # 转为 spike tensor（低分辨率两个极性通道）
-        eventLr_pos_tensor = eventLr_pos.toSpikeTensor(torch.zeros((1, 17, 17, self.nTimeBins)))
-        eventLr_neg_tensor = eventLr_neg.toSpikeTensor(torch.zeros((1, 17, 17, self.nTimeBins)))
+        eventLr_ni_tensor = ev_non_inverse.toSpikeTensor(torch.zeros((1, 17, 17, self.nTimeBins)))
+        eventLr_i_tensor = ev_inverse.toSpikeTensor(torch.zeros((1, 17, 17, self.nTimeBins)))
 
 
         # 高分辨率事件直接转张量（默认含正负极性）
@@ -166,13 +165,13 @@ class mnistDataset(Dataset):
         # 校验
 
 
-        assert eventLr_pos_tensor.sum() == len(eventLr_pos.x)
-        assert eventLr_neg_tensor.sum() == len(eventLr_neg.x)
+        assert eventLr_ni_tensor.sum() == len(ev_non_inverse.x)
+        assert eventLr_i_tensor.sum() == len(ev_inverse.x)
         
         assert eventHr_tensor.sum() == len(eventHr.x)
 
         # 返回：低分辨率张量（正负分通道），高分辨率张量（合在一起）
-        return eventLr_pos_tensor, eventLr_neg_tensor, eventHr_tensor
+        return eventLr_ni_tensor, eventLr_i_tensor, eventHr_tensor
 
     def __len__(self):
         # 返回低分辨率事件列表的长度
@@ -189,16 +188,17 @@ def main():
 
 
     # 多接收两个原始 numpy 数组
-    event_pos, event_neg, pos_raw, neg_raw = readNpSpikes(file_path, split_polarity=True)
 
-    print("✅ 正极性事件数量:", len(pos_raw))
-    print("✅ 负极性事件数量:", len(neg_raw))
+    ev_non_inverse ,ev_inverse = readNpSpikes(file_path, invert_polarity=True)
 
-    print("\n📘 正极性事件（前5条 原始数据）:")
-    print(pos_raw[:5])  # 正确显示 [t, x, y, p=1]
+    print("✅ 正极性事件数量:", len(ev_non_inverse))
+    print("✅ 负极性事件数量:", len(ev_inverse))
 
-    print("\n📕 负极性事件（前5条 原始数据）:")
-    print(neg_raw[:5])  # 正确显示 [t, x, y, p=0]
+    print("\n📘 无反转事件极性（前5条 原始数据）:")
+    print(ev_non_inverse[:5])  # 正确显示 [t, x, y, p=1]
+
+    print("\n📕 反转事件极性（前5条 原始数据）:")
+    print(ev_inverse[:5])  # 正确显示 [t, x, y, p=0]
 
 
 

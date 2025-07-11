@@ -43,7 +43,7 @@ class NetworkBasic(torch.nn.Module):
         self.slayer3 = snn.layer(self.neuron_config[2], netParams['simulation'])
 
         # 是卷积层，由配置了对应参数的给自的 snn.layer 提供（slayer.py中定义了conv函数，就是调用slayer.py中conv函数，想要什么层，就在slayer.py中定义），带有脉冲特性。
-        self.conv1 = self.slayer1.conv(1, 8, 5, padding=2)
+        self.conv1 = self.slayer1.conv(2, 8, 5, padding=2)
         self.conv2 = self.slayer2.conv(8, 8, 3, padding=1)
         self.upconv1 = self.slayer3.convTranspose(8, 2, kernelSize=2, stride=2)
 
