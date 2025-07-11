@@ -174,10 +174,23 @@ def main():
             # 通常是形如 [B, 2, H, W, T] 的 5D 张量对，用于超分任务训练
             eventLr_pos, eventLr_neg, eventHr = eventLr_pos.to(device), eventLr_neg.to(device), eventHr.to(device)
             # 模型前向传播，输出结果。
+
             output_pos = m(eventLr_pos)
+            # print("===============================")
+            # print("🟢 output_pos:")
+            # print("  shape:", output_pos.shape)
+            # print("  non-zero spikes:", (output_pos != 0).sum().item())
+
             output_neg = m(eventLr_neg)
+            # print("🔵 output_neg:")
+            # print("  shape:", output_neg.shape)
+            # print("  non-zero spikes:", (output_neg != 0).sum().item())
+
             # output = 0.5 * (output_pos + output_neg)
             output = output_pos + output_neg
+            # print("🟣 output (combined):")
+            # print("  shape:", output.shape)
+            # print("  non-zero spikes:", (output != 0).sum().item())
 
 
             # 计算损失函数。
@@ -215,9 +228,24 @@ def main():
                     eventLr_pos, eventLr_neg, eventHr = eventLr_pos.to(device), eventLr_neg.to(device), eventHr.to(device)
 
                     output_pos = m(eventLr_pos)
+                    print("=============validation==================")
+                    print("🟢 output_pos:")
+                    print("  shape:", output_pos.shape)
+                    print("  non-zero spikes:", (output_pos != 0).sum().item())
+
                     output_neg = m(eventLr_neg)
+                    print("🔵 output_neg:")
+                    print("  shape:", output_neg.shape)
+                    print("  non-zero spikes:", (output_neg != 0).sum().item())
                     # output = 0.5 * (output_pos + output_neg)
+
+
                     output = output_pos + output_neg
+                    print("🟣 output (combined):")
+                    print("  shape:", output.shape)
+                    print("  non-zero spikes:", (output != 0).sum().item())
+
+
 
                     loss = MSE(output, eventHr)
                     loss_ecm = sum([MSE(torch.sum(output[:, :, :, :, i*50:(i+1)*50], dim=4),
