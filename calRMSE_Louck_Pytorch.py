@@ -15,12 +15,22 @@ def calRMSE(eventOutput, eventGt, device='cuda'):
     eventOutput = torch.tensor(eventOutput, dtype=torch.long, device=device)
     eventGt = torch.tensor(eventGt, dtype=torch.long, device=device)
 
-    tOp, xOp, yOp, pOp = eventOutput[:, 0], eventOutput[:, 1], eventOutput[:, 2], eventOutput[:, 3]
-    tGt, xGt, yGt, pGt = eventGt[:, 0], eventGt[:, 1], eventGt[:, 2], eventGt[:, 3]
+    #tOp, xOp, yOp, pOp = eventOutput[:, 0], eventOutput[:, 1], eventOutput[:, 2], eventOutput[:, 3]
+    #tGt, xGt, yGt, pGt = eventGt[:, 0], eventGt[:, 1], eventGt[:, 2], eventGt[:, 3]
+    tOp = torch.round(eventOutput[:, 0]).long()
+    xOp = torch.round(eventOutput[:, 1]).long()
+    yOp = torch.round(eventOutput[:, 2]).long()
+    pOp = torch.round(eventOutput[:, 3]).long()
+
+    tGt = torch.round(eventGt[:, 0]).long()
+    xGt = torch.round(eventGt[:, 1]).long()
+    yGt = torch.round(eventGt[:, 2]).long()
+    pGt = torch.round(eventGt[:, 3]).long()
 
     # 构建体素表示
     VoxOp = torch.zeros((2, _H, _W, _T), dtype=torch.float32, device=device)
     VoxGt = torch.zeros((2, _H, _W, _T), dtype=torch.float32, device=device)
+
     VoxOp[pOp, xOp, yOp, tOp] = 1
     VoxGt[pGt, xGt, yGt, tGt] = 1
 
