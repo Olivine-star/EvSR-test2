@@ -179,6 +179,7 @@ def main():
             eventHr_pos = eventHr[:, 0:1, ...]
             eventHr_neg = eventHr[:, 1:2, ...]
 
+
             # === 2. 前向传播两个通道分别 ===
             output_pos = m(eventLr_pos)  # [B, 1, H', W', T]
             output_neg = m(eventLr_neg)  # [B, 1, H', W', T]
@@ -219,28 +220,46 @@ def main():
         log_tensorboard(tf_writer, trainMetirc, epoch, prefix="Train")
         log_epoch_done(log_training, epoch)
 
-        #  验证阶段（每 epoch）
+        # 验证阶段（每 epoch）
         if epoch % 1 == 0:
-            # 设置为评估模式。
             m.eval()
             t = datetime.datetime.now()
             valMetirc = Metric()
             for i, (eventLr, eventHr) in enumerate(testLoader, 0):
-                # 禁用梯度计算，提高推理速度
                 with torch.no_grad():
                     eventLr, eventHr = eventLr.to(device), eventHr.to(device)
-                    output = m(eventLr)
 
-                    loss = MSE(output, eventHr)
-                    loss_ecm = sum([MSE(torch.sum(output[:, :, :, :, i*50:(i+1)*50], dim=4),
-                                        torch.sum(eventHr[:, :, :, :, i*50:(i+1)*50], dim=4)) for i in range(shape[2] // 50)])
+                    # === 拆分正负事件 ===
+                    eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
+                    eventLr_neg = eventLr[:, 1:2, ...]
+                    eventHr_pos = eventHr[:, 0:1, ...]
+                    eventHr_neg = eventHr[:, 1:2, ...]
+
+                    # === 分别前向传播 ===
+                    output_pos = m(eventLr_pos)
+                    output_neg = m(eventLr_neg)
+
+                    # === 合并输出 ===
+                    output = torch.cat([output_pos, output_neg], dim=1)
+                    target = torch.cat([eventHr_pos, eventHr_neg], dim=1)
+
+                    # === 计算损失 ===
+                    loss = MSE(output, target)
+                    loss_ecm = sum([
+                        MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
+                            torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
+                        for i in range(shape[2] // 50)
+                    ])
                     loss_total = loss + loss_ecm
-                    #  将当前验证轮次中一个 batch 的各类指标传入 valMetirc 进行统计与记录，用于后续计算平均损失、脉冲数量等评估结果。
-                    valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_total.item(), 1,
-                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
+
+                    valMetirc.updateIter(
+                        loss.item(), loss_ecm.item(), loss_total.item(), 1,
+                        eventLr.sum().item(), output.sum().item(), eventHr.sum().item()
+                    )
 
                     if i % showFreq == 0:
-                        print_progress(epoch, maxEpoch, i, len(testDataset) // bs, bs, valMetirc, time_last, "Val", log_training)
+                        print_progress(epoch, maxEpoch, i, len(testDataset) // bs, bs, valMetirc, time_last, "Val",
+                                       log_training)
                         time_last = datetime.datetime.now()
 
             log_tensorboard(tf_writer, valMetirc, epoch, prefix="Val")
