@@ -29,10 +29,12 @@ def calRMSE(eventOutput, eventGt):
     VoxOp[pOp, xOp, yOp, tOp] = 1
     VoxGt = np.zeros([2, _H, _W, _T])
     VoxGt[pGt, xGt, yGt, tGt] = 1
-
     ecm = np.sum(np.sum(VoxGt, axis=3), axis=0)
 
+
+
     RMSE1 = np.sum((VoxGt - VoxOp) ** 2)
+
     RMSE2 = 0
     for k in range(math.ceil(_T / 50)):
         psthGt = np.sum(VoxGt[:, :, :, k * 50:(k + 1) * 50], axis=3)
@@ -40,7 +42,11 @@ def calRMSE(eventOutput, eventGt):
         RMSE2 += np.sum((psthGt - psthOp) ** 2)
 
     denom = (tGt.max() - tGt.min()) * np.sum(ecm != 0)
+    print(np.sum(ecm != 0))
+
     RMSE = np.sqrt((RMSE1 + RMSE2) / denom)
+
+    print(denom)
     RMSE_s = np.sqrt(RMSE1 / denom)
     RMSE_t = np.sqrt(RMSE2 / denom)
 

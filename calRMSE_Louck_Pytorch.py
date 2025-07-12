@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import math
-
+import numpy
 import torch
 
 def calRMSE(eventOutput, eventGt, device='cuda'):
@@ -15,17 +15,8 @@ def calRMSE(eventOutput, eventGt, device='cuda'):
     eventOutput = torch.tensor(eventOutput, dtype=torch.long, device=device)
     eventGt = torch.tensor(eventGt, dtype=torch.long, device=device)
 
-    #tOp, xOp, yOp, pOp = eventOutput[:, 0], eventOutput[:, 1], eventOutput[:, 2], eventOutput[:, 3]
-    #tGt, xGt, yGt, pGt = eventGt[:, 0], eventGt[:, 1], eventGt[:, 2], eventGt[:, 3]
-    tOp = torch.round(eventOutput[:, 0]).long()
-    xOp = torch.round(eventOutput[:, 1]).long()
-    yOp = torch.round(eventOutput[:, 2]).long()
-    pOp = torch.round(eventOutput[:, 3]).long()
-
-    tGt = torch.round(eventGt[:, 0]).long()
-    xGt = torch.round(eventGt[:, 1]).long()
-    yGt = torch.round(eventGt[:, 2]).long()
-    pGt = torch.round(eventGt[:, 3]).long()
+    tOp, xOp, yOp, pOp = eventOutput[:, 0], eventOutput[:, 1], eventOutput[:, 2], eventOutput[:, 3]
+    tGt, xGt, yGt, pGt = eventGt[:, 0], eventGt[:, 1], eventGt[:, 2], eventGt[:, 3]
 
     # 构建体素表示
     VoxOp = torch.zeros((2, _H, _W, _T), dtype=torch.float32, device=device)
@@ -34,8 +25,10 @@ def calRMSE(eventOutput, eventGt, device='cuda'):
     VoxOp[pOp, xOp, yOp, tOp] = 1
     VoxGt[pGt, xGt, yGt, tGt] = 1
 
+
     # RMSE1: 全体素误差
     RMSE1 = torch.sum((VoxGt - VoxOp) ** 2)
+
 
     # RMSE2: 每 50 帧的时间块误差
     RMSE2 = 0
@@ -61,8 +54,21 @@ def calRMSE(eventOutput, eventGt, device='cuda'):
         polarity_acc = 0.0
 
     # 归一化因子
-    denom = (tGt.max() - tGt.min()).item() * (torch.sum(torch.sum(VoxGt, dim=3) > 0)).item()
+    active_voxels = torch.sum(torch.sum(torch.sum(VoxGt, dim=3), dim=0) != 0)
+    time_span = (tGt.max() - tGt.min()).item()
+    denom = time_span * active_voxels.item()
+
+    #denom = (tGt.max() - tGt.min()).item() * (torch.sum(torch.sum(VoxGt, dim=3) != 0)).item()
+    #denom = (tGt.max() - tGt.min()).item() * np.sum(torch.sum(VoxGt, dim=3).cpu().numpy() != 0)
+
+    #print((torch.sum(torch.sum(VoxGt, dim=3) != 0)).item())
+    #ecm = torch.sum(VoxGt, dim=3)  # [2, H, W]
+    #active_voxels = torch.sum(ecm != 0)  # 统计非零位置数
+    #time_span = (tGt.max() - tGt.min()).item()  # 时间跨度
+    #denom = time_span * active_voxels.item()
+
     RMSE = torch.sqrt((RMSE1 + RMSE2) / denom)
+    #print(denom)
     RMSE_s = torch.sqrt(RMSE1 / denom)
     RMSE_t = torch.sqrt(RMSE2 / denom)
 
