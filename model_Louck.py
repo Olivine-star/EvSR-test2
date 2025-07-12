@@ -4,6 +4,19 @@ from utils.utils import getNeuronConfig
 import numpy as np
 
 
+class SpatialAttention3D(torch.nn.Module):
+    def __init__(self, kernel_size=3):
+        super(SpatialAttention3D, self).__init__()
+        padding = kernel_size // 2
+        self.conv = torch.nn.Conv3d(1, 1, kernel_size=kernel_size, padding=padding)
+
+    def forward(self, x):
+        # x: [B, C, H, W, T]
+        avg_out = torch.mean(x, dim=1, keepdim=True)  # [B, 1, H, W, T]
+        attn_map = torch.sigmoid(self.conv(avg_out))  # [B, 1, H, W, T]
+        return x * attn_map
+
+
 class NetworkBasic(torch.nn.Module):
     """
     这个模型就由trainNmnist传入两个参数：netParams和传入spikeInput
@@ -54,13 +67,16 @@ class NetworkBasic(torch.nn.Module):
         self.conv2 = self.slayer2.conv(8, 8, 3, padding=1)
         self.upconv1 = self.slayer3.convTranspose(8, 1, kernelSize=2, stride=2)
 
+        self.attn1 = SpatialAttention3D()
+        self.attn2 = SpatialAttention3D()
+
     # 这段 forward 函数是 NetworkBasic 的前向传播逻辑，用于对输入的 脉冲张量（事件数据） 进行 时空建模和上采样重建。
     def forward(self, spikeInput):
         # 通过 slayer1.psp() 对输入进行电压膜电位建模
         # print("=================================================================")
         # print(spikeInput.shape)
         psp1 = self.slayer1.psp(spikeInput)
-
+        psp1 = self.attn1(psp1)  # Attention 插入点1
         # 输入为 [B, C, H, W, T] 形状的 5D 张量，表示一批事件数据（脉冲流）。
         # H 和 W 仍然是空间位置，代表传感器像素网格上的坐标。
         # 获取输入的维度
@@ -79,6 +95,8 @@ class NetworkBasic(torch.nn.Module):
         spikes_layer_1 = self.slayer1.spike(self.conv1(psp1))
         # 对上一层的脉冲输出继续进行 PSP，再卷积、再脉冲。
         spikes_layer_2 = self.slayer2.spike(self.conv2(self.slayer2.psp(spikes_layer_1)))
+
+        spikes_layer_2 = self.attn2(spikes_layer_2)  # Attention 插入点2
         # PSP 后上采样，然后与前面旁路上采样的 psp1_1 相加(像 ResNet 的残差，加入一条细节旁路路径)，再经过脉冲发放，输出最终脉冲结果。
         spikes_layer_3 = self.slayer3.spike(self.upconv1(self.slayer3.psp(spikes_layer_2)) + psp1_1)
 
