@@ -7,7 +7,7 @@
 
 import sys
 sys.path.append('..')
-from model_Louck import NetworkBasic, Network1, Network2, Network3
+from model_Louck import NetworkBasic
 from torch.utils.data import DataLoader, Dataset
 import datetime, os
 import slayerSNN as snn
@@ -155,7 +155,6 @@ for k, (eventLr, eventHr, path) in enumerate(testLoader):
         output_neg = m(eventLr_neg)  # [B, 1, H', W', T]
 
         output = torch.cat([output_pos, output_neg], dim=1)  # [B, 2, H', W', T]
-
 
 
 

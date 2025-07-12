@@ -2,8 +2,7 @@ import numpy as np
 import os
 import math
 
-# === 你的极性准确率函数（如前面已有）===
-def polarity_accuracy(eventOutput, eventGt):
+def calRMSE(eventOutput, eventGt):
     xOp = np.round(eventOutput[:, 1]).astype(int)
     yOp = np.round(eventOutput[:, 2]).astype(int)
     pOp = np.round(eventOutput[:, 3]).astype(int)
@@ -14,12 +13,39 @@ def polarity_accuracy(eventOutput, eventGt):
     pGt = np.round(eventGt[:, 3]).astype(int)
     tGt = np.round(eventGt[:, 0]).astype(int)
 
+    # 构建字典索引 (t, x, y) → polarity
     pred_dict = {(t, x, y): p for t, x, y, p in zip(tOp, xOp, yOp, pOp)}
     gt_dict   = {(t, x, y): p for t, x, y, p in zip(tGt, xGt, yGt, pGt)}
-    common_coords = set(pred_dict.keys()).intersection(gt_dict.keys())
 
-    correct_match = sum(1 for key in common_coords if pred_dict[key] == gt_dict[key])
-    return correct_match / len(common_coords) if common_coords else 0.0
+    correct_match = 0
+    common_coords = set(pred_dict.keys()).intersection(gt_dict.keys())
+    for key in common_coords:
+        if pred_dict[key] == gt_dict[key]:
+            correct_match += 1
+    polarity_acc = correct_match / len(common_coords) if common_coords else 0
+
+    # 再跑原有 RMSE 逻辑
+    VoxOp = np.zeros([2, _H, _W, _T])
+    VoxOp[pOp, xOp, yOp, tOp] = 1
+    VoxGt = np.zeros([2, _H, _W, _T])
+    VoxGt[pGt, xGt, yGt, tGt] = 1
+
+    ecm = np.sum(np.sum(VoxGt, axis=3), axis=0)
+
+    RMSE1 = np.sum((VoxGt - VoxOp) ** 2)
+    RMSE2 = 0
+    for k in range(math.ceil(_T / 50)):
+        psthGt = np.sum(VoxGt[:, :, :, k * 50:(k + 1) * 50], axis=3)
+        psthOp = np.sum(VoxOp[:, :, :, k * 50:(k + 1) * 50], axis=3)
+        RMSE2 += np.sum((psthGt - psthOp) ** 2)
+
+    denom = (tGt.max() - tGt.min()) * np.sum(ecm != 0)
+    RMSE = np.sqrt((RMSE1 + RMSE2) / denom)
+    RMSE_s = np.sqrt(RMSE1 / denom)
+    RMSE_t = np.sqrt(RMSE2 / denom)
+
+    return RMSE, RMSE_s, RMSE_t, polarity_acc
+
 
 # === 路径读取逻辑保持不变 ===
 def load_path_config(path_config='dataset_path.txt'):
@@ -55,15 +81,14 @@ for n in classList:
         eventOutput = np.load(os.path.join(p1, name))
         eventGt = np.load(os.path.join(p2, name))
 
-        RMSE, RMSE_t, RMSE_s = calRMSE(eventOutput, eventGt)
-        PA = polarity_accuracy(eventOutput, eventGt)
+        RMSE, RMSE_t, RMSE_s, PA = calRMSE(eventOutput, eventGt)
 
         RMSEListOurs.append(RMSE)
         RMSEListOurs_s.append(RMSE_s)
         RMSEListOurs_t.append(RMSE_t)
         PAList.append(PA)
 
-        print(f"{i}/{len(classList)}   {k}/{len(sampleList)}  RMSE: {RMSE:.4f}  PA: {PA:.3f}")
+        print(f"{i}/{len(classList)}   {k}/{len(sampleList)}  RMSE: {RMSE:.4f}  RMSE_t: {RMSE_t:.4f}  RMSE_s: {RMSE_s:.4f}  Polarity Accuracy: {PA:.4f}")
     i += 1
 
 # === 汇总结果 ===
