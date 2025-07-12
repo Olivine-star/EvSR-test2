@@ -1,0 +1,125 @@
+import numpy as np
+import os
+import math
+
+import torch
+
+def calRMSE(eventOutput, eventGt, device='cuda'):
+    """
+    使用 PyTorch 加速 RMSE 与极性准确率计算（兼容 torch<2.1，无需 torch.intersect1d）。
+    输入:
+        eventOutput, eventGt: numpy arrays, shape [N, 4], columns = [t, x, y, p]
+    输出:
+        RMSE, RMSE_s, RMSE_t, polarity_accuracy
+    """
+    eventOutput = torch.tensor(eventOutput, dtype=torch.long, device=device)
+    eventGt = torch.tensor(eventGt, dtype=torch.long, device=device)
+
+    tOp, xOp, yOp, pOp = eventOutput[:, 0], eventOutput[:, 1], eventOutput[:, 2], eventOutput[:, 3]
+    tGt, xGt, yGt, pGt = eventGt[:, 0], eventGt[:, 1], eventGt[:, 2], eventGt[:, 3]
+
+    # 构建体素表示
+    VoxOp = torch.zeros((2, _H, _W, _T), dtype=torch.float32, device=device)
+    VoxGt = torch.zeros((2, _H, _W, _T), dtype=torch.float32, device=device)
+    VoxOp[pOp, xOp, yOp, tOp] = 1
+    VoxGt[pGt, xGt, yGt, tGt] = 1
+
+    # RMSE1: 全体素误差
+    RMSE1 = torch.sum((VoxGt - VoxOp) ** 2)
+
+    # RMSE2: 每 50 帧的时间块误差
+    RMSE2 = 0
+    block_size = 50
+    for k in range((_T + block_size - 1) // block_size):
+        t_start, t_end = k * block_size, min((k + 1) * block_size, _T)
+        psthGt = torch.sum(VoxGt[:, :, :, t_start:t_end], dim=3)
+        psthOp = torch.sum(VoxOp[:, :, :, t_start:t_end], dim=3)
+        RMSE2 += torch.sum((psthGt - psthOp) ** 2)
+
+    # === 极性准确率 ===
+    # 唯一标识每个时空点 (t, x, y)
+    flatOp = (tOp * _H * _W + xOp * _W + yOp).cpu().numpy()
+    flatGt = (tGt * _H * _W + xGt * _W + yGt).cpu().numpy()
+
+    # 使用 numpy 计算共同索引
+    common_coords, idx_op_np, idx_gt_np = np.intersect1d(flatOp, flatGt, return_indices=True)
+
+    if len(common_coords) > 0:
+        correct_match = (pOp.cpu().numpy()[idx_op_np] == pGt.cpu().numpy()[idx_gt_np]).sum()
+        polarity_acc = correct_match / len(common_coords)
+    else:
+        polarity_acc = 0.0
+
+    # 归一化因子
+    denom = (tGt.max() - tGt.min()).item() * (torch.sum(torch.sum(VoxGt, dim=3) > 0)).item()
+    RMSE = torch.sqrt((RMSE1 + RMSE2) / denom)
+    RMSE_s = torch.sqrt(RMSE1 / denom)
+    RMSE_t = torch.sqrt(RMSE2 / denom)
+
+    return RMSE.item(), RMSE_s.item(), RMSE_t.item(), polarity_acc
+
+
+
+# === 路径读取逻辑保持不变 ===
+def load_path_config(path_config='dataset_path.txt'):
+    path_dict = {}
+    with open(path_config, 'r') as f:
+        for line in f:
+            if '=' in line:
+                key, val = line.strip().split('=', 1)
+                path_dict[key.strip()] = val.strip()
+    return path_dict
+
+
+paths = load_path_config()
+path1 = paths.get('savepath', '')           # Output
+path2 = paths.get('sr_test_root', '')       # GT
+
+_H, _W, _T = [240, 180, 600]
+
+classList = os.listdir(os.path.join(path2, 'HR'))
+
+# === 初始化列表 ===
+RMSEListOurs, RMSEListOurs_s, RMSEListOurs_t = [], [], []
+PAList = []  # 极性准确率列表
+
+i = 1
+for n in classList:
+    print(f"Class: {n}")
+    p1 = os.path.join(path1, n)              # Output
+    p2 = os.path.join(path2, 'HR', n)        # GT
+    sampleList = os.listdir(p2)
+
+    for k, name in enumerate(sampleList, 1):
+        eventOutput = np.load(os.path.join(p1, name))
+        eventGt = np.load(os.path.join(p2, name))
+
+        RMSE, RMSE_t, RMSE_s, PA = calRMSE(eventOutput, eventGt)
+
+        RMSEListOurs.append(RMSE)
+        RMSEListOurs_s.append(RMSE_s)
+        RMSEListOurs_t.append(RMSE_t)
+        PAList.append(PA)
+
+        print(f"{i}/{len(classList)}   {k}/{len(sampleList)}  RMSE: {RMSE:.4f}  RMSE_t: {RMSE_t:.4f}  RMSE_s: {RMSE_s:.4f}  Polarity Accuracy: {PA:.4f}")
+    i += 1
+
+# === 汇总结果 ===
+rmse_mean = sum(RMSEListOurs) / len(RMSEListOurs)
+rmse_s_mean = sum(RMSEListOurs_s) / len(RMSEListOurs)
+rmse_t_mean = sum(RMSEListOurs_t) / len(RMSEListOurs)
+pa_mean = sum(PAList) / len(PAList)
+
+# === 写入报告 ===
+result_path = os.path.join(path1, 'result.txt')
+with open(result_path, 'w') as f:
+    f.write("==== Event-Based SR Evaluation Result ====\n")
+    f.write(f"Total Samples: {len(RMSEListOurs)}\n")
+    f.write(f"RMSE (total): {rmse_mean:.4f}\n")
+    f.write(f"RMSE (spatial): {rmse_s_mean:.4f}\n")
+    f.write(f"RMSE (temporal): {rmse_t_mean:.4f}\n")
+    f.write(f"Polarity Accuracy: {pa_mean:.4f}\n")
+    f.write("==========================================\n")
+
+print(f"\n✅ Final RMSE: {rmse_mean:.4f}  | Polarity Acc: {pa_mean:.3f}")
+print(f"📄 Results written to: {result_path}")
