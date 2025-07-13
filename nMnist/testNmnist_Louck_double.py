@@ -7,7 +7,7 @@
 
 import sys
 sys.path.append('..')
-from model_Louck import NetworkBasic
+from model_Louck_double import DualBranchSNN as NetworkBasic
 from torch.utils.data import DataLoader, Dataset
 import datetime, os
 import slayerSNN as snn
@@ -27,39 +27,41 @@ def readNpSpikes(filename, timeUnit=1e-3):
     return event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
 
 
-# -------------------------------
-# ✅ 路径读取函数（内联）
-# -------------------------------
-def load_path_config(path_config='../dataset_path.txt'):
-    path_dict = {}
-    with open(path_config, 'r') as f:
-        for line in f:
-            if '=' in line:
-                key, val = line.strip().split('=', 1)
-                path_dict[key.strip()] = val.strip()
-    return path_dict
+# # -------------------------------
+# # ✅ 路径读取函数（内联）
+# # -------------------------------
+# def load_path_config(path_config='../dataset_path.txt'):
+#     path_dict = {}
+#     with open(path_config, 'r') as f:
+#         for line in f:
+#             if '=' in line:
+#                 key, val = line.strip().split('=', 1)
+#                 path_dict[key.strip()] = val.strip()
+#     return path_dict
 
-# -------------------------------
-# ✅ 加载路径配置
-# -------------------------------
-paths = load_path_config()
-savepath = paths.get('savepath', '')
-ckptPath = paths.get('ckptPath', '')
+# # -------------------------------
+# # ✅ 加载路径配置
+# # -------------------------------
+# paths = load_path_config()
+# savepath = paths.get('savepath', '')
+# ckptPath = paths.get('ckptPath', '')
 
 
 class mnistDataset(Dataset):
-    def __init__(self):
+    def __init__(self, hrPath, lrPath, savepath):
         self.lrList = []
         self.hrList = []
-        self.hrPath = paths.get('test_hr', '')
-        self.lrPath = paths.get('test_lr', '')
+        # self.hrPath = paths.get('test_hr', '')
+        # self.lrPath = paths.get('test_lr', '')
+        self.hrPath = hrPath
+        self.lrPath = lrPath
         self.path = []
 
         self.H = 34
         self.W = 34
 
         for k in range(10):
-            print("Read data %d"%k)
+            #print("Read data %d"%k)
             hp = os.path.join(self.hrPath, str(k))
             lp = os.path.join(self.lrPath, str(k))
             if not os.path.exists(os.path.join(savepath, str(k))):
@@ -90,53 +92,72 @@ class mnistDataset(Dataset):
         return len(self.lrList)
 
 
-# 创建一个mnistDataset对象
-testDataset = mnistDataset()
-# 打开保存路径下的ckpt.txt文件，以写入模式
-with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
-    # 将ckptPath写入文件
-    f.writelines(ckptPath)
-
-bs = 1
-testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=0)
-
-netParams = snn.params('network.yaml')
-m = NetworkBasic(netParams).to("cuda")
-m = torch.nn.DataParallel(m).to(device)
-m.eval()
-
-m, epoch0 = checkpoint_restore(m, ckptPath, name='ckptBest', device=device)
-print("start from epoch %d" % epoch0)
-
-Mse = torch.nn.MSELoss(reduction='mean')
-
-loss_sum = 0
-l = []
-count = 0
-
-lossTime = lossEcm = 0
+# Mse = torch.nn.MSELoss(reduction='mean')
+#
+# loss_sum = 0
+# l = []
+# count = 0
+#
+# lossTime = lossEcm = 0
 
 
+def inference(ckptPath, hrPath, lrPath, savepath, ckptname='ckptBest', networkyaml='nMnist/network.yaml'):
+    # 创建一个mnistDataset对象
+    testDataset = mnistDataset(hrPath, lrPath, savepath)
 
-for k, (eventLr, eventHr, path) in enumerate(testLoader):
-    with torch.no_grad():
-        # 低分辨率事件输入的位置（test）
-        eventLr = eventLr.to("cuda")
-        eventHr = eventHr.to("cuda")
+    bs = 1
+    testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=0)
 
-        output = m(eventLr)  # [B, 2, H, W, T]
+    netParams = snn.params(networkyaml)
+    m = NetworkBasic(netParams).to("cuda")
+    m = torch.nn.DataParallel(m).to(device)
+    m.eval()
+
+    m, epoch0 = checkpoint_restore(m, ckptPath, name=ckptname, device=device)
+    #print("start from epoch %d" % epoch0)
+
+    for k, (eventLr, eventHr, path) in enumerate(testLoader):
+        with torch.no_grad():
+            # 低分辨率事件输入的位置（test）
+            eventLr = eventLr.to("cuda")
+            eventHr = eventHr.to("cuda")
+
+            output = m(eventLr)  # [B, 2, H, W, T]
+
+            # 将输出的脉冲张量转换为事件列表
+            eventList = getEventFromTensor(output)
+            e = eventList[0]
+            e = e[:, [0, 2, 1, 3]]
+            # 最后保存为 .npy 文件，输出路径为 savepath + 类别目录 + 文件名
+            new_path = os.path.join(savepath, path[0])
+            np.save(new_path, e.astype(np.int32))
+
+            if k % 1000 ==0:
+                print("%d/%d"%(k, len(testLoader)))
 
 
+if __name__ == '__main__':
 
-        # 将输出的脉冲张量转换为事件列表
-        eventList = getEventFromTensor(output)
-        e = eventList[0]
-        e = e[:, [0, 2, 1, 3]]
-        # 最后保存为 .npy 文件，输出路径为 savepath + 类别目录 + 文件名
-        new_path = os.path.join(savepath, path[0])
-        np.save(new_path, e.astype(np.int32))
+    # -------------------------------
+    # ✅ 路径读取函数（内联）
+    # -------------------------------
+    def load_path_config(path_config='../dataset_path.txt'):
+        path_dict = {}
+        with open(path_config, 'r') as f:
+            for line in f:
+                if '=' in line:
+                    key, val = line.strip().split('=', 1)
+                    path_dict[key.strip()] = val.strip()
+        return path_dict
 
-        if k % 100 ==0:
-            print("%d/%d"%(k, len(testLoader)))
 
+    # -------------------------------
+    # ✅ 加载路径配置
+    # -------------------------------
+    paths = load_path_config()
+    savepath = paths.get('savepath', '')
+    ckptPath = paths.get('ckptPath', '')
+    hrPath = paths.get('test_hr', '')
+    lrPath = paths.get('test_lr', '')
 
+    inference(ckptPath, hrPath, lrPath, savepath, networkyaml='network.yaml')
