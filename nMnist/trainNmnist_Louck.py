@@ -40,6 +40,7 @@ import numpy as np
 from utils.drawloss import draw
 
 import matplotlib.pyplot as plt
+from LOSS import ES1_loss
 
 def main():
     """
@@ -197,15 +198,15 @@ def main():
             target = torch.cat([eventHr_pos, eventHr_neg], dim=1)  # [B, 2, H', W', T]
 
             # === 5. 计算损失 ===
-            loss = MSE(output, target)
-
+            loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
+            """loss = MSE(output, target)
             # 时间块的 ECM loss
             loss_ecm = sum([
                 MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
                     torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
                 for i in range(shape[2] // 50)
             ])
-            loss_total = loss + 5 * loss_ecm
+            loss_total = loss + 5 * loss_ecm"""
 
 
 
@@ -250,13 +251,14 @@ def main():
                     target = torch.cat([eventHr_pos, eventHr_neg], dim=1)
 
                     # === 计算损失 ===
-                    loss = MSE(output, target)
-                    loss_ecm = sum([
-                        MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
-                            torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
-                        for i in range(shape[2] // 50)
-                    ])
-                    loss_total = loss + loss_ecm
+                    loss_total, loss, loss_ecm = ES1_loss.validation_loss(output, target, shape)
+                    # loss = MSE(output, target)
+                    # loss_ecm = sum([
+                    #     MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
+                    #         torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
+                    #     for i in range(shape[2] // 50)
+                    # ])
+                    # loss_total = loss + loss_ecm
 
                     valMetirc.updateIter(
                         loss.item(), loss_ecm.item(), loss_total.item(), 1,

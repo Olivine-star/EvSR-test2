@@ -19,7 +19,7 @@ def readNpSpikes(filename, timeUnit=1e-3):
 
 # 这个定义的类 mnistDataset 是一个继承自 Dataset 的自定义数据集类，用于处理和加载 MNIST 数据集的高分辨率（HR）和低分辨率（LR）数据。
 class mnistDataset(Dataset):
-    def __init__(self, train=True, path_config='dataset_path.txt'):
+    def __init__(self, train=True, path_config='../dataset_path.txt'):
         self.lrList = []
         self.hrList = []
 
