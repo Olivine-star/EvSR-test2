@@ -20,8 +20,9 @@ from utils.drawloss import draw
 import matplotlib.pyplot as plt
 from LOSS import ES1_loss
 
-def main():
-    args = parser.parse_args()
+def main(args=None):
+    if args is None:
+        args = parser.parse_args()
     # 定义模型输入的形状
     shape = [34, 34, 350]
     # 设置环境变量，指定使用哪一块GPU
@@ -32,11 +33,12 @@ def main():
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
 
-
-    # 创建训练数据集，读取训练数据集文件路径
-    trainDataset = mnistDataset()
+    dataset_path = None
+    if args.dataset_path is not None:
+        dataset_path = args.dataset_path
+    trainDataset = mnistDataset(path_config=dataset_path)
     # 创建测试数据集，读取训练测试集文件路径（False表明是测试集）
-    testDataset = mnistDataset(False)
+    testDataset = mnistDataset(False, dataset_path)
 
     print("Training sample: %d, Testing sample: %d" % (len(trainDataset), len(testDataset)))
     # 获取命令行参数（train.bat）中的batch size
@@ -53,7 +55,10 @@ def main():
 
     # snn 是一个工具库，专门用于搭建和训练 SNN
     # 从 network.yaml 中读取 SNN 的仿真参数（如 Ts 时间步长、tSample 总时间窗），并返回一个参数字典或对象，供 NetworkBasic 初始化时使用。
-    netParams = snn.params('network.yaml')
+    networkyaml = 'network.yaml'
+    if args.networkyaml is not None:
+        networkyaml = args.networkyaml
+    netParams = snn.params(networkyaml)
     # 调用模型类，创建网络对象
     m = DualBranchSNN(netParams)
     # 将网络转换为并行计算模式，并将其移动到指定的设备上
@@ -206,7 +211,6 @@ def main():
                 param_group['lr'] *= 0.1
                 print("Learning rate decreased to:", param_group['lr'])
 
-    draw()           
 
 
 # 用于打印训练或测试过程中的进度信息

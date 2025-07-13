@@ -9,15 +9,13 @@ import sys
 sys.path.append('..')
 from model_Louck import NetworkBasic
 from torch.utils.data import DataLoader, Dataset
-import datetime, os
+import os
 import slayerSNN as snn
 import torch
-from utils.utils import getEventFromTensor
-from utils.ckpt import checkpoint_restore
 import numpy as np
 from slayerSNN.spikeFileIO import event
 
-from utils.select_model import run_multiple_models
+from 废弃.select_model import run_multiple_models
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -102,7 +100,7 @@ with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
 bs = 1
 testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=0)
 
-netParams = snn.params('network.yaml')
+netParams = snn.params('../nMnist/network.yaml')
 
 # m = NetworkBasic(netParams).to("cuda")
 # m = torch.nn.DataParallel(m).to(device)

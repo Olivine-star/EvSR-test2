@@ -17,12 +17,16 @@ def load_path_config(path_config='dataset_path.txt'):
 # -------------------------------
 # ✅ 入口主程序
 # -------------------------------
-if __name__ == '__main__':
+def inference(ckpt_number=10, ckpt_root=None, hrPath=None, lrPath=None, base_savepath=None):
     paths = load_path_config('dataset_path.txt')
-    ckpt_root = paths.get('ckptPath', '')
-    hrPath = paths.get('test_hr', '')
-    lrPath = paths.get('test_lr', '')
-    base_savepath = paths.get('savepath', '')
+    if ckpt_root is None:
+        ckpt_root = paths.get('ckptPath', '')
+    if hrPath is None:
+        hrPath = paths.get('test_hr', '')
+    if lrPath is None:
+        lrPath = paths.get('test_lr', '')
+    if base_savepath is None:
+        base_savepath = paths.get('savepath', '')
 
 
     logfile = os.path.join(base_savepath, 'all_ckpt_results.txt')
@@ -32,7 +36,7 @@ if __name__ == '__main__':
     best_rmse = float('inf')
     results_all = []
 
-    for i in range(11):  # ckpt0 到 ckpt10
+    for i in range(ckpt_number):  # ckpt0 到 ckpt10
         ckpt_name = f'ckpt{i}'
         savepath = os.path.join(base_savepath, ckpt_name)
         os.makedirs(savepath, exist_ok=True)
@@ -60,3 +64,6 @@ if __name__ == '__main__':
 
     print(f"\n✅ All results written to {logfile}")
     print(f"🏆 Best checkpoint: {best_ckpt}")
+
+if __name__ == '__main__':
+    inference()

@@ -42,33 +42,9 @@ from utils.drawloss import draw
 import matplotlib.pyplot as plt
 from LOSS import ES1_loss
 
-def main():
-    """
-    parser是一个 命令行参数解析器对象
-    parse_args() 是在告诉它：“现在请解析命令行中真正传进来的值”
-    args = parser.parse_args()解析参数，会做两件事：
-    1.从系统中读取命令行参数（即 sys.argv），并解析它们
-    例如：.bat文件是python trainNmnist.py --bs 64 --lr 0.1
-    此时 sys.argv 的值是：['trainNmnist.py', '--bs', '64', '--lr', '0.1']
-    2.把这些参数自动“匹配”到你 .add_argument() 注册过的参数里，并自动转换类型、处理默认值等
-    例如：args.bs  # = 64
-        args.lr  # = 0.1
-
-    例如：.bat 文件写：python trainNmnist.py --bs 64
-    最终 args.bs == 64 ✅
-
-    总结：
-    train.bat → 命令行参数 → trainNmnist.py → parser.parse_args() → args
-    参数传递是隐式的
-    你不会在代码中写：args = parser.parse_args(['--bs', '64'])  ❌
-    而是让系统“自动”把命令行中的：python trainNmnist.py --bs 64 --lr 0.1
-    变成内部的：sys.argv = ['trainNmnist.py', '--bs', '64', '--lr', '0.1']
-    argparse 默认就是解析这个 sys.argv，所以你不需要显式传递，称之为“隐式传参”是非常合理的 ✅。
-    .bat 文件中写的参数是通过系统调用自动传递到 Python 的 sys.argv 中的，
-    argparse会隐式解析这些值并转换类型、设定默认值，从而使得你的 Python 脚本无需手动读取命令行参数就可以直接用。.
-
-    """
-    args = parser.parse_args()
+def main(args=None):
+    if args is None:
+        args = parser.parse_args()
     # 定义模型输入的形状
     shape = [34, 34, 350]
     # 设置环境变量，指定使用哪一块GPU
@@ -81,9 +57,13 @@ def main():
 
 
     # 创建训练数据集，读取训练数据集文件路径
-    trainDataset = mnistDataset()
+    dataset_path = None
+    if args.dataset_path is not None:
+        dataset_path = args.dataset_path
+
+    trainDataset = mnistDataset(path_config=dataset_path)
     # 创建测试数据集，读取训练测试集文件路径（False表明是测试集）
-    testDataset = mnistDataset(False)
+    testDataset = mnistDataset(False, dataset_path)
 
     print("Training sample: %d, Testing sample: %d" % (len(trainDataset), len(testDataset)))
     # 获取命令行参数（train.bat）中的batch size
@@ -100,7 +80,10 @@ def main():
 
     # snn 是一个工具库，专门用于搭建和训练 SNN
     # 从 network.yaml 中读取 SNN 的仿真参数（如 Ts 时间步长、tSample 总时间窗），并返回一个参数字典或对象，供 NetworkBasic 初始化时使用。
-    netParams = snn.params('network.yaml')
+    networkyaml = 'network.yaml'
+    if args.networkyaml is not None:
+        networkyaml = args.networkyaml
+    netParams = snn.params(networkyaml)
     # 调用模型类，创建网络对象
     m = NetworkBasic(netParams)
     # 将网络转换为并行计算模式，并将其移动到指定的设备上
@@ -278,8 +261,6 @@ def main():
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.1
                 print("Learning rate decreased to:", param_group['lr'])
-
-    draw()           
 
 
 # 用于打印训练或测试过程中的进度信息
