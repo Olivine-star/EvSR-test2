@@ -134,7 +134,7 @@ with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
 bs = 1
 testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=0)
 
-netParams = snn.params('network.yaml')
+netParams = snn.params('../nMnist/network.yaml')
 m = NetworkBasic(netParams).to("cuda")
 m = torch.nn.DataParallel(m).to(device)
 m.eval()

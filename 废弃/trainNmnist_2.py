@@ -93,7 +93,7 @@ def main():
 
     # snn 是一个工具库，专门用于搭建和训练 SNN
     # 从 network.yaml 中读取 SNN 的仿真参数（如 Ts 时间步长、tSample 总时间窗），并返回一个参数字典或对象，供 NetworkBasic 初始化时使用。
-    netParams = snn.params('network.yaml')
+    netParams = snn.params('../nMnist/network.yaml')
     # 调用模型类，创建网络对象
     m = NetworkBasic(netParams)
     # 将网络转换为并行计算模式，并将其移动到指定的设备上
