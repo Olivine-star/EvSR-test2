@@ -244,7 +244,7 @@ if __name__ == '__main__':
     x = torch.unsqueeze(x, dim=0).cuda()
     print(x)
 
-    netParams = snn.params('./nMnist/network.yaml')
+    netParams = snn.params('../nMnist/network.yaml')
     m = NetworkBasic(netParams)
     m = torch.nn.DataParallel(m).cuda()
     with torch.no_grad():
