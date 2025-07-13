@@ -129,7 +129,12 @@ def running_cal_RMSE(savepath, sr_test_root):
 
     return rmse_mean, rmse_s_mean, rmse_t_mean, pa_mean
 
-    print(f"\n✅ Final RMSE: {rmse_mean:.4f}  | Polarity Acc: {pa_mean:.3f}")
+    print("\n✅ Evaluation Summary")
+    print(f"Total Samples     : {len(RMSEListOurs)}")
+    print(f"RMSE (total)      : {rmse_mean:.4f}")
+    print(f"RMSE (spatial)    : {rmse_s_mean:.4f}")
+    print(f"RMSE (temporal)   : {rmse_t_mean:.4f}")
+    print(f"Polarity Accuracy : {pa_mean:.4f}")
     print(f"📄 Results written to: {result_path}")
 
 
