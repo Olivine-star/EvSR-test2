@@ -35,9 +35,11 @@ from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
 from statistic import Metric
 import slayerSNN as snn
+import numpy as np
 
+from utils.drawloss import draw
 
-
+import matplotlib.pyplot as plt
 
 def main():
     """
@@ -72,6 +74,10 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     # 设置设备为GPU
     device = 'cuda'
+    np.random.seed(42)
+    torch.manual_seed(42)
+    torch.cuda.manual_seed_all(42)
+
 
     # 创建训练数据集，读取训练数据集文件路径
     trainDataset = mnistDataset()
@@ -270,6 +276,8 @@ def main():
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.1
                 print("Learning rate decreased to:", param_group['lr'])
+
+    draw()           
 
 
 # 用于打印训练或测试过程中的进度信息
