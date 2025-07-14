@@ -1,5 +1,5 @@
 import os
-from nMnist.testNmnist_Louck_double import inference
+from nMnist.testNmnist_Louck import inference
 from calRMSE_Louck_Pytorch import running_cal_RMSE
 
 # -------------------------------
@@ -17,7 +17,7 @@ def load_path_config(path_config='dataset_path.txt'):
 # -------------------------------
 # ✅ 入口主程序
 # -------------------------------
-def inference(ckpt_number=10, ckpt_root=None, hrPath=None, lrPath=None, base_savepath=None):
+def running_inference(ckpt_number=10, ckpt_root=None, hrPath=None, lrPath=None, base_savepath=None):
     paths = load_path_config('dataset_path.txt')
     if ckpt_root is None:
         ckpt_root = paths.get('ckptPath', '')
@@ -66,4 +66,4 @@ def inference(ckpt_number=10, ckpt_root=None, hrPath=None, lrPath=None, base_sav
     print(f"🏆 Best checkpoint: {best_ckpt}")
 
 if __name__ == '__main__':
-    inference()
+    running_inference()
