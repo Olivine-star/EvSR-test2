@@ -7,7 +7,7 @@
 
 import sys
 sys.path.append('..')
-from model_Louck_double import DualBranchSNN as NetworkBasic
+from model_Louck_triple import DualBranchWithGuidance as NetworkBasic
 from torch.utils.data import DataLoader, Dataset
 import datetime, os
 import slayerSNN as snn
