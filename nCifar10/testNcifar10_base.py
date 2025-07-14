@@ -85,40 +85,80 @@ class cifarDataset(Dataset):
         return len(self.lrList)
 
 
-device = 'cuda'
-testDataset = cifarDataset()
+# device = 'cuda'
+# testDataset = cifarDataset()
 
-with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
-    # 将ckptPath写入文件
-    f.writelines(ckptPath)
+# with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
+#     # 将ckptPath写入文件
+#     f.writelines(ckptPath)
 
-bs = 1
-testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=1, drop_last=False)
+# bs = 1
+# testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=1, drop_last=False)
 
-netParams = snn.params('network.yaml')
-# m = NetworkBasic(netParams)
-m = NetworkBasic(netParams).to("cuda")
-m = torch.nn.DataParallel(m).to(device)
-m.eval()
+# netParams = snn.params('network.yaml')
+# # m = NetworkBasic(netParams)
+# m = NetworkBasic(netParams).to("cuda")
+# m = torch.nn.DataParallel(m).to(device)
+# m.eval()
 
-print(netParams['simulation'])
+# print(netParams['simulation'])
 
-m, epoch0 = checkpoint_restore(m, ckptPath, name="ckptBest")
+# m, epoch0 = checkpoint_restore(m, ckptPath, name="ckptBest")
 
 
-for k, (eventLr, eventHr, path) in enumerate(testLoader, 0):
-    with torch.no_grad():
-        eventLr = eventLr.to("cuda")
-        eventHr = eventHr.to("cuda")
+# for k, (eventLr, eventHr, path) in enumerate(testLoader, 0):
+#     with torch.no_grad():
+#         eventLr = eventLr.to("cuda")
+#         eventHr = eventHr.to("cuda")
 
-        output = m(eventLr)
+#         output = m(eventLr)
 
-        eventList = getEventFromTensor(output)
-        e = eventList[0]
-        e = e[:, [0,2,1,3]]
-        new_path = os.path.join(savepath, path[0])
-        np.save(new_path, e.astype(np.int32))
+#         eventList = getEventFromTensor(output)
+#         e = eventList[0]
+#         e = e[:, [0,2,1,3]]
+#         new_path = os.path.join(savepath, path[0])
+#         np.save(new_path, e.astype(np.int32))
 
-    if k % 100 == 0:
-        print(k, '/', len(testDataset))
+#     if k % 100 == 0:
+#         print(k, '/', len(testDataset))
 
+
+
+def main():
+    device = 'cuda'
+    testDataset = cifarDataset()
+
+    with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
+        f.writelines(ckptPath)
+
+    bs = 1
+    testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=1, drop_last=False)
+
+    netParams = snn.params('network.yaml')
+    m = NetworkBasic(netParams).to("cuda")
+    m = torch.nn.DataParallel(m).to(device)
+    m.eval()
+
+    print(netParams['simulation'])
+
+    m, epoch0 = checkpoint_restore(m, ckptPath, name="ckptBest")
+
+    for k, (eventLr, eventHr, path) in enumerate(testLoader, 0):
+        with torch.no_grad():
+            eventLr = eventLr.to("cuda")
+            eventHr = eventHr.to("cuda")
+
+            output = m(eventLr)
+
+            eventList = getEventFromTensor(output)
+            e = eventList[0]
+            e = e[:, [0,2,1,3]]
+            new_path = os.path.join(savepath, path[0])
+            np.save(new_path, e.astype(np.int32))
+
+        if k % 100 == 0:
+            print(k, '/', len(testDataset))
+
+
+if __name__ == '__main__':
+    main()
