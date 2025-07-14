@@ -158,18 +158,12 @@ class DualBranchWithGuidance(nn.Module):
 
         out_guide = self.guidance_branch(spikeInput)  # [B, 1, H, W, T]
 
-        # 交集融合（指导信号）
-        #soft_mask = torch.sigmoid(out_guide)  # 连续值 ∈ (0, 1)
-        #out_fused = out_fused * soft_mask.expand(-1, 2, -1, -1, -1)
-        mask = ((out_guide > 0).expand(-1, 2, -1, -1, -1)) | (out_fused > 0)
+        out_guide_expand = out_guide.expand(-1, 2, -1, -1, -1)
+        out_merged = torch.maximum(out_fused, out_guide_expand)
 
-        # 或者你想要并集中所有非零位置为1（只保留形状）
-        out_fused = out_fused * mask
 
-        # 取最大或加权融合（推荐）
-        #out_fused = out_fused + soft_mask
 
 
         print(f"[Debug] out_guide shape: {out_guide.shape}, nonzero: {(out_guide > 0).sum().item()}")
 
-        return out_fused
+        return out_merged
