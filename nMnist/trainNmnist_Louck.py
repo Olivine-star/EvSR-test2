@@ -57,7 +57,7 @@ def main(args=None):
 
 
     # 创建训练数据集，读取训练数据集文件路径
-    dataset_path = None
+    dataset_path = "../dataset_path.txt"
     if args.dataset_path is not None:
         dataset_path = args.dataset_path
 

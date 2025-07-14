@@ -20,3 +20,6 @@ parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--cuda', type=str, default='0,1')
 parser.add_argument('--add', type=str, default=None)
 parser.add_argument('--j', type=int, default=16)
+parser.add_argument('--dataset_path', type=str, default=None,
+                    help='Path to dataset config file (e.g., dataset_path.txt)')
+parser.add_argument('--networkyaml', type=str, default=None)

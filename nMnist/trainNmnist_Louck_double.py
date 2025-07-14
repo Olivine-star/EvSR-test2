@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 sys.path.append('../')
-from model_Louck_double import NetworkBasic, DualBranchSNN
+#from model_Louck_double import NetworkBasic, DualBranchSNN
+from model_Louck_triple import DualBranchWithGuidance as DualBranchSNN
 from nMnist.mnistDatasetSR import mnistDataset
 from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
@@ -33,7 +34,7 @@ def main(args=None):
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
 
-    dataset_path = None
+    dataset_path = "../dataset_path.txt"
     if args.dataset_path is not None:
         dataset_path = args.dataset_path
     trainDataset = mnistDataset(path_config=dataset_path)
