@@ -3,12 +3,12 @@ REM
 call conda activate EventSRSNN
 
 REM
-cd /d D:\VSCodeProject\EventSR\SR-ES1\test2\EventSR-main\nMnist
+cd /c C:\code\EventSR-Project\EvSR-test2\nMnist
 
 REM
-python trainNmnist_1.py ^
+python trainNmnist_Louck_triple.py ^
 --bs 64 ^
---savepath "D:/PycharmProjects/EventSR-ckpt/ckpt5/" ^
+--savepath "C:/code/EventSR-Project/EventSR-ckpt/lr_5_0.5/" ^
 --epoch 30 ^
 --showFreq 50 ^
 --lr 0.1 ^

@@ -51,4 +51,3 @@ class ncifarDataset(Dataset):
     def __len__(self):
         return 5
         # return len(self.lrList)
-

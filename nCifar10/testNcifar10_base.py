@@ -23,7 +23,7 @@ def readNpSpikes(filename, timeUnit=1e-3):
 # -------------------------------
 # ✅ 路径读取函数（内联）
 # -------------------------------
-def load_path_config(path_config='dataset_path.txt'):
+def load_path_config(path_config='../dataset_cifar.txt'):
     path_dict = {}
     with open(path_config, 'r') as f:
         for line in f:
