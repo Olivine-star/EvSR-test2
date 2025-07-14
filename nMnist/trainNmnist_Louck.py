@@ -262,6 +262,8 @@ def main(args=None):
                 param_group['lr'] *= 0.1
                 print("Learning rate decreased to:", param_group['lr'])
 
+    return savePath
+
 
 # 用于打印训练或测试过程中的进度信息
 def print_progress(epoch, maxEpoch, i, total, bs, metric, time_last, mode, log_file):
