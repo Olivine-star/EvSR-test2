@@ -76,9 +76,12 @@ def calRMSE(eventOutput, eventGt, device='cuda'):
 
 
 
-
-
+# # nmnist
 _H, _W, _T = [240, 180, 600]
+
+# caifar
+# _H, _W, _T = 240, 180, 1500
+
 def running_cal_RMSE(savepath, sr_test_root):
     path1, path2 = savepath, sr_test_root
     #_H, _W, _T = [240, 180, 600]

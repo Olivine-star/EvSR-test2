@@ -154,6 +154,7 @@ class DualBranchWithGuidance(nn.Module):
         out_pos = self.pos_branch(spike_pos)
         out_neg = self.neg_branch(spike_neg)
         out_fused = torch.cat([out_pos, out_neg], dim=1)  # [B, 2, H, W, T]
+        print(f"[Debug] out_fused shape: {out_fused.shape}, nonzero: {(out_fused > 0).sum().item()}")
 
         out_guide = self.guidance_branch(spikeInput)  # [B, 1, H, W, T]
 
@@ -168,7 +169,7 @@ class DualBranchWithGuidance(nn.Module):
         # 取最大或加权融合（推荐）
         #out_fused = out_fused + soft_mask
 
-        print(f"[Debug] out_fused shape: {out_fused.shape}, nonzero: {(out_fused > 0).sum().item()}")
+
         print(f"[Debug] out_guide shape: {out_guide.shape}, nonzero: {(out_guide > 0).sum().item()}")
 
         return out_fused
