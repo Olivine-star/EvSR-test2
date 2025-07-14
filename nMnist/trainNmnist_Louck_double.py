@@ -141,6 +141,9 @@ def main(args=None):
             output = m(eventLr)  # [B, 2, H, W, T]
             target = eventHr  # [B, 2, H, W, T]
 
+            print(f"[Debug] Output shape: {output.shape}, nonzero: {(output > 0).sum().item()}")
+            print(f"[Debug] Target shape: {target.shape}, nonzero: {(target > 0).sum().item()}")
+
             loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
 
             """loss = MSE(output, target)
