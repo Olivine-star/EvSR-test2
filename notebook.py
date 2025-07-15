@@ -15,7 +15,7 @@ args = SimpleNamespace(
     networkyaml='nMnist/network.yaml'
 )
 
-ckptPath = train.main(args)
+ckptPath = train.run(args)
 
 
 import inference

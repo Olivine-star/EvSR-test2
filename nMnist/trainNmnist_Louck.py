@@ -42,7 +42,7 @@ from utils.drawloss import draw
 import matplotlib.pyplot as plt
 from LOSS import ES1_loss
 
-def main(args=None):
+def run(args=None):
     if args is None:
         args = parser.parse_args()
     # 定义模型输入的形状

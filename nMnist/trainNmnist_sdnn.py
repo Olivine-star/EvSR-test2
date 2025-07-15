@@ -1,3 +1,26 @@
+"""
+这段代码是训练逻辑和打印结果
+训练逻辑：
+1.模型前向传播，输出结果。
+output = m(eventLr)
+
+2.计算损失函数。
+其中一个loss是loss = MSE(output, eventHr)
+
+3.反向传播，更新参数。
+# 清空旧梯度。用optimizer的功能，优化器在110行定义：optimizer = torch.optim.Adam(m.parameters(), lr=args.lr, amsgrad=True)
+optimizer.zero_grad()
+# 反向传播计算新梯度。通过先定义出来loss_total，用backward()计算梯度，再通过optimizer.step()更新参数。
+loss_total.backward()
+# 更新参数。
+optimizer.step()
+
+验证阶段：
+验证阶段用于评估模型性能，不进行梯度更新和参数优化，仅前向传播并记录评估指标。
+调用model_sdnn
+
+"""
+
 
 import sys
 import os
@@ -7,39 +30,54 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 sys.path.append('../')
-#from model_Louck_double import NetworkBasic, DualBranchSNN
-from model_Louck_triple import DualBranchWithGuidance as DualBranchSNN
+from model_sdnn import NetworkBasic
 from nMnist.mnistDatasetSR import mnistDataset
 from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
 from statistic import Metric
 import slayerSNN as snn
-import numpy as np
 
-from utils.drawloss import draw
 
-import matplotlib.pyplot as plt
-from LOSS import ES1_loss
 
-def run(args=None):
-    if args is None:
-        args = parser.parse_args()
+
+def main():
+    """
+    parser是一个 命令行参数解析器对象
+    parse_args() 是在告诉它：“现在请解析命令行中真正传进来的值”
+    args = parser.parse_args()解析参数，会做两件事：
+    1.从系统中读取命令行参数（即 sys.argv），并解析它们
+    例如：.bat文件是python trainNmnist.py --bs 64 --lr 0.1
+    此时 sys.argv 的值是：['trainNmnist.py', '--bs', '64', '--lr', '0.1']
+    2.把这些参数自动“匹配”到你 .add_argument() 注册过的参数里，并自动转换类型、处理默认值等
+    例如：args.bs  # = 64
+        args.lr  # = 0.1
+
+    例如：.bat 文件写：python trainNmnist.py --bs 64
+    最终 args.bs == 64 ✅
+
+    总结：
+    train.bat → 命令行参数 → trainNmnist.py → parser.parse_args() → args
+    参数传递是隐式的
+    你不会在代码中写：args = parser.parse_args(['--bs', '64'])  ❌
+    而是让系统“自动”把命令行中的：python trainNmnist.py --bs 64 --lr 0.1
+    变成内部的：sys.argv = ['trainNmnist.py', '--bs', '64', '--lr', '0.1']
+    argparse 默认就是解析这个 sys.argv，所以你不需要显式传递，称之为“隐式传参”是非常合理的 ✅。
+    .bat 文件中写的参数是通过系统调用自动传递到 Python 的 sys.argv 中的，
+    argparse会隐式解析这些值并转换类型、设定默认值，从而使得你的 Python 脚本无需手动读取命令行参数就可以直接用。.
+
+    """
+    args = parser.parse_args()
     # 定义模型输入的形状
     shape = [34, 34, 350]
     # 设置环境变量，指定使用哪一块GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     # 设置设备为GPU
     device = 'cuda'
-    np.random.seed(42)
-    torch.manual_seed(42)
-    torch.cuda.manual_seed_all(42)
 
-    dataset_path = "../dataset_path.txt"
-    if args.dataset_path is not None:
-        dataset_path = args.dataset_path
-    trainDataset = mnistDataset(path_config=dataset_path)
+    # 创建训练数据集，读取训练数据集文件路径
+    trainDataset = mnistDataset()
     # 创建测试数据集，读取训练测试集文件路径（False表明是测试集）
-    testDataset = mnistDataset(False, dataset_path)
+    testDataset = mnistDataset(False)
 
     print("Training sample: %d, Testing sample: %d" % (len(trainDataset), len(testDataset)))
     # 获取命令行参数（train.bat）中的batch size
@@ -56,12 +94,9 @@ def run(args=None):
 
     # snn 是一个工具库，专门用于搭建和训练 SNN
     # 从 network.yaml 中读取 SNN 的仿真参数（如 Ts 时间步长、tSample 总时间窗），并返回一个参数字典或对象，供 NetworkBasic 初始化时使用。
-    networkyaml = 'network.yaml'
-    if args.networkyaml is not None:
-        networkyaml = args.networkyaml
-    netParams = snn.params(networkyaml)
+    netParams = snn.params('network.yaml')
     # 调用模型类，创建网络对象
-    m = DualBranchSNN(netParams)
+    m = NetworkBasic(netParams)
     # 将网络转换为并行计算模式，并将其移动到指定的设备上
     m = torch.nn.DataParallel(m).to(device)
 
@@ -116,7 +151,7 @@ def run(args=None):
     # 打开保存路径下的config.txt文件，以写入模式打开
     with open(os.path.join(savePath, 'config.txt'), 'w') as f:
         # 遍历m.module.neuron_config中的每一个config
-        for i, config in enumerate(m.module.pos_branch.neuron_config):
+        for i, config in enumerate(m.module.neuron_config):
             # 将config中的参数写入文件
             f.writelines('layer%d: theta=%d, tauSr=%.2f, tauRef=%.2f, scaleRef=%.2f, tauRho=%.2f, scaleRho=%.2f\n' % (
                 i + 1, config['theta'], config['tauSr'], config['tauRef'], config['scaleRef'], config['tauRho'], config['scaleRho']))
@@ -128,34 +163,25 @@ def run(args=None):
     # 打开保存路径下的log.csv文件，以写入模式打开
     log_training = open(os.path.join(savePath, 'log.csv'), 'w')
 
-############################################################ 模型主循环 #########################################################
-
     # 这段代码是你模型的训练主循环，每一轮（epoch）中都会进行训练和验证
     for epoch in range(epoch0 + 1, maxEpoch):
         trainMetirc = Metric()
         m.train()
         # 训练阶段（每 epoch）
         for i, (eventLr, eventHr) in enumerate(trainLoader, 0):
-            eventLr, eventHr = eventLr.to(device), eventHr.to(device)  # [B, 2, H, W, T]
+            # eventLr, eventHr 是低分辨率和高分辨率事件张量。
+            # eventLr, eventHr 是从 trainDataset 中按批加载的数据
+            # 它们来自你自定义的 mnistDataset 类的返回结果
+            # 通常是形如 [B, 2, H, W, T] 的 5D 张量对，用于超分任务训练
+            eventLr, eventHr = eventLr.to(device), eventHr.to(device)
+            # 模型前向传播，输出结果。
+            output = m(eventLr)
 
-            output = m(eventLr)  # [B, 2, H, W, T]
-            target = eventHr  # [B, 2, H, W, T]
-
-            #print(f"[Debug] Output shape: {output.shape}, nonzero: {(output > 0).sum().item()}")
-            #print(f"[Debug] Target shape: {target.shape}, nonzero: {(target > 0).sum().item()}")
-
-            loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
-
-            """loss = MSE(output, target)
-            # 时间块的 ECM loss
-            loss_ecm = sum([
-                MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
-                    torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
-                for i in range(shape[2] // 50)
-            ])
-            loss_total = loss + 5 * loss_ecm"""
-
-
+            # 计算损失函数。
+            loss = MSE(output, eventHr)
+            loss_ecm = sum([MSE(torch.sum(output[:, :, :, :, i*50:(i+1)*50], dim=4),
+                                torch.sum(eventHr[:, :, :, :, i*50:(i+1)*50], dim=4)) for i in range(shape[2] // 50)])
+            loss_total = loss + loss_ecm * 5
 
             # 清空旧梯度。
             optimizer.zero_grad()
@@ -174,36 +200,28 @@ def run(args=None):
         log_tensorboard(tf_writer, trainMetirc, epoch, prefix="Train")
         log_epoch_done(log_training, epoch)
 
-        # 验证阶段（每 epoch）
+        #  验证阶段（每 epoch）
         if epoch % 1 == 0:
+            # 设置为评估模式。
             m.eval()
             t = datetime.datetime.now()
             valMetirc = Metric()
             for i, (eventLr, eventHr) in enumerate(testLoader, 0):
+                # 禁用梯度计算，提高推理速度
                 with torch.no_grad():
                     eventLr, eventHr = eventLr.to(device), eventHr.to(device)
+                    output = m(eventLr)
 
-                    output = m(eventLr)  # [B, 2, H, W, T]
-                    target = eventHr  # [B, 2, H, W, T]
-
-                    loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
-
-                    # loss = MSE(output, target)
-                    # loss_ecm = sum([
-                    #     MSE(torch.sum(output[:, :, :, :, i * 50:(i + 1) * 50], dim=4),
-                    #         torch.sum(target[:, :, :, :, i * 50:(i + 1) * 50], dim=4))
-                    #     for i in range(shape[2] // 50)
-                    # ])
-                    # loss_total = loss + loss_ecm
-
-                    valMetirc.updateIter(
-                        loss.item(), loss_ecm.item(), loss_total.item(), 1,
-                        eventLr.sum().item(), output.sum().item(), eventHr.sum().item()
-                    )
+                    loss = MSE(output, eventHr)
+                    loss_ecm = sum([MSE(torch.sum(output[:, :, :, :, i*50:(i+1)*50], dim=4),
+                                        torch.sum(eventHr[:, :, :, :, i*50:(i+1)*50], dim=4)) for i in range(shape[2] // 50)])
+                    loss_total = loss + loss_ecm
+                    #  将当前验证轮次中一个 batch 的各类指标传入 valMetirc 进行统计与记录，用于后续计算平均损失、脉冲数量等评估结果。
+                    valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_total.item(), 1,
+                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
 
                     if i % showFreq == 0:
-                        print_progress(epoch, maxEpoch, i, len(testDataset) // bs, bs, valMetirc, time_last, "Val",
-                                       log_training)
+                        print_progress(epoch, maxEpoch, i, len(testDataset) // bs, bs, valMetirc, time_last, "Val", log_training)
                         time_last = datetime.datetime.now()
 
             log_tensorboard(tf_writer, valMetirc, epoch, prefix="Val")
@@ -214,9 +232,6 @@ def run(args=None):
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.1
                 print("Learning rate decreased to:", param_group['lr'])
-
-    return savePath
-
 
 
 # 用于打印训练或测试过程中的进度信息

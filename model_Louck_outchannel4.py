@@ -64,8 +64,9 @@ class NetworkBasic(torch.nn.Module):
 
         # 是卷积层，由配置了对应参数的给自的 snn.layer 提供（slayer.py中定义了conv函数，就是调用slayer.py中conv函数，想要什么层，就在slayer.py中定义），带有脉冲特性。
         self.conv1 = self.slayer1.conv(1, 8, 5, padding=2)
-        self.conv2 = self.slayer2.conv(8, 8, 3, padding=1)
-        self.upconv1 = self.slayer3.convTranspose(8, 1, kernelSize=2, stride=2)
+        self.upconv1 = self.slayer2.convTranspose(8, 1, kernelSize=2, stride=2)
+        self.conv2 = self.slayer3.conv(1, 1, 3, padding=1)
+
 
         self.attn1 = SpatialAttention3D()
         self.attn2 = SpatialAttention3D()
@@ -76,7 +77,7 @@ class NetworkBasic(torch.nn.Module):
         # print("=================================================================")
         # print(spikeInput.shape)
         psp1 = self.slayer1.psp(spikeInput)
-        psp1 = self.attn1(psp1)  # Attention 插入点1
+        #psp1 = self.attn1(psp1)  # Attention 插入点1
         # 输入为 [B, C, H, W, T] 形状的 5D 张量，表示一批事件数据（脉冲流）。
         # H 和 W 仍然是空间位置，代表传感器像素网格上的坐标。
         # 获取输入的维度
@@ -94,11 +95,11 @@ class NetworkBasic(torch.nn.Module):
         # 将 PSP 结果输入脉冲卷积层，并用阈值函数转换为脉冲输出（脉冲表示事件是否激活）。
         spikes_layer_1 = self.slayer1.spike(self.conv1(psp1))
         # 对上一层的脉冲输出继续进行 PSP，再卷积、再脉冲。
-        spikes_layer_2 = self.slayer2.spike(self.conv2(self.slayer2.psp(spikes_layer_1)))
+        spikes_layer_2 = self.slayer2.spike(self.upconv1(self.slayer2.psp(spikes_layer_1)))
 
-        spikes_layer_2 = self.attn2(spikes_layer_2)  # Attention 插入点2
+        #spikes_layer_2 = self.attn2(spikes_layer_2)  # Attention 插入点2
         # PSP 后上采样，然后与前面旁路上采样的 psp1_1 相加(像 ResNet 的残差，加入一条细节旁路路径)，再经过脉冲发放，输出最终脉冲结果。
-        spikes_layer_3 = self.slayer3.spike(self.upconv1(self.slayer3.psp(spikes_layer_2)) + psp1_1)
+        spikes_layer_3 = self.slayer3.spike(self.conv2(self.slayer3.psp(spikes_layer_2)) + psp1_1)
 
         # 这是模型对输入低分辨率事件张量的超分重建输出。
         return spikes_layer_3
