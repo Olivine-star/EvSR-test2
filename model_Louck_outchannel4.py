@@ -64,8 +64,8 @@ class NetworkBasic(torch.nn.Module):
 
         # 是卷积层，由配置了对应参数的给自的 snn.layer 提供（slayer.py中定义了conv函数，就是调用slayer.py中conv函数，想要什么层，就在slayer.py中定义），带有脉冲特性。
         self.conv1 = self.slayer1.conv(1, 8, 5, padding=2)
-        self.upconv1 = self.slayer2.convTranspose(8, 2, kernelSize=2, stride=2)
-        self.conv2 = self.slayer3.conv(2, 1, 3, padding=1)
+        self.upconv1 = self.slayer2.convTranspose(8, 1, kernelSize=2, stride=2)
+        self.conv2 = self.slayer3.conv(1, 1, 3, padding=1)
 
 
         self.attn1 = SpatialAttention3D()
