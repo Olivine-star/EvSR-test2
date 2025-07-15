@@ -14,7 +14,8 @@ args = SimpleNamespace(
     dataset_path='dataset_path.txt',
     networkyaml='nMnist/network.yaml'
 )
-
+import torch.multiprocessing
+torch.multiprocessing.freeze_support()
 ckptPath = train.run(args)
 
 

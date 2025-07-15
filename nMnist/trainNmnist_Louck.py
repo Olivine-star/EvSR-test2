@@ -331,4 +331,4 @@ def log_validation_summary(metric, valLossHistory, epoch, t_start, log_file, sav
 if __name__ == '__main__':
     import torch.multiprocessing
     torch.multiprocessing.freeze_support()
-    main()
+    run()
