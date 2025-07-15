@@ -7,7 +7,7 @@
 
 import sys
 sys.path.append('..')
-from model import NetworkBasic, Network1, Network2, Network3
+from model_baseline_sdnn import NetworkBasic
 from torch.utils.data import DataLoader, Dataset
 import datetime, os
 import slayerSNN as snn
