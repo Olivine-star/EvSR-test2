@@ -15,11 +15,13 @@ args = SimpleNamespace(
     networkyaml='nMnist/network.yaml'
 )
 import torch.multiprocessing
-torch.multiprocessing.freeze_support()
-ckptPath = train.run(args)
-
-
 import inference
-savepath=ckptPath+"/inference"
-#ckptPath="result/TestAutomatic/bs64_lr0.1_ep1_cuda0_20250714_000419"
-inference.running_inference(ckpt_number=1, ckpt_root=ckptPath, hrPath=None, lrPath=None, base_savepath=savepath)
+if __name__ == '__main__':
+
+    torch.multiprocessing.freeze_support()
+    ckptPath = train.run(args)
+
+
+    savepath=ckptPath+"/inference"
+    #ckptPath="result/TestAutomatic/bs64_lr0.1_ep1_cuda0_20250714_000419"
+    inference.running_inference(ckpt_number=1, ckpt_root=ckptPath, hrPath=None, lrPath=None, base_savepath=savepath)
