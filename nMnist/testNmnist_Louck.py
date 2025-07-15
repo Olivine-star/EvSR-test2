@@ -7,7 +7,7 @@
 
 import sys
 sys.path.append('..')
-from model_Louck import NetworkBasic
+from model_Louck_outchannel4 import NetworkBasic
 from torch.utils.data import DataLoader, Dataset
 import datetime, os
 import slayerSNN as snn
