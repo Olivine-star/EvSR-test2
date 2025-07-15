@@ -29,7 +29,7 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 sys.path.append('../')
-from model_Louck import NetworkBasic
+from model_Louck_outchannel4 import NetworkBasic
 from nMnist.mnistDatasetSR import mnistDataset
 from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
