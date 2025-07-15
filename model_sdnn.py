@@ -3,7 +3,7 @@ import slayerSNN as snn
 from utils.utils import getNeuronConfig
 import numpy as np
 
-
+# 就改了网络层顺序和参数
 class NetworkBasic(torch.nn.Module):
     
     
