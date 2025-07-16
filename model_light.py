@@ -27,6 +27,7 @@ class NetworkBasic(torch.nn.Module):
         参数如 theta（发放阈值）、tauSr（突触响应时间常数）、tauRef（不应期时间）、scaleRho（电压或重置幅值）等，会影响神经元的发放频率、时间响应、抑制机制等。
 
         ✅ 目的：通过为不同层设置不同神经元行为，让网络在不同阶段能学习到更合适的时间动态。
+        修改成两层
         
         """
         # 依次将三个不同层的神经元参数添加到空列表 self.neuron_config 中
