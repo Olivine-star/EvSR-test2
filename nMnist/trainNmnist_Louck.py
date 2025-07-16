@@ -29,7 +29,7 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 sys.path.append('../')
-from model_Louck import NetworkBasic
+from model_Louck_outchannel4 import NetworkBasic
 from nMnist.mnistDatasetSR import mnistDataset
 from utils.ckpt import checkpoint_restore, checkpoint_save
 from opts import parser
@@ -42,7 +42,7 @@ from utils.drawloss import draw
 import matplotlib.pyplot as plt
 from LOSS import ES1_loss
 
-def main(args=None):
+def run(args=None):
     if args is None:
         args = parser.parse_args()
     # 定义模型输入的形状
@@ -331,4 +331,4 @@ def log_validation_summary(metric, valLossHistory, epoch, t_start, log_file, sav
 if __name__ == '__main__':
     import torch.multiprocessing
     torch.multiprocessing.freeze_support()
-    main()
+    run()
