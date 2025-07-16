@@ -65,11 +65,11 @@ class NetworkBasic(torch.nn.Module):
         # 是卷积层，由配置了对应参数的给自的 snn.layer 提供（slayer.py中定义了conv函数，就是调用slayer.py中conv函数，想要什么层，就在slayer.py中定义），带有脉冲特性。
         self.conv1 = self.slayer1.conv(1, 8, 5, padding=2)
         self.upconv1 = self.slayer2.convTranspose(8, 1, kernelSize=2, stride=2)
-        self.conv2 = self.slayer3.conv(1, 1, 3, padding=1)
+        #self.conv2 = self.slayer3.conv(1, 1, 3, padding=1)
 
 
-        self.attn1 = SpatialAttention3D()
-        self.attn2 = SpatialAttention3D()
+        #self.attn1 = SpatialAttention3D()
+        #self.attn2 = SpatialAttention3D()
 
     # 这段 forward 函数是 NetworkBasic 的前向传播逻辑，用于对输入的 脉冲张量（事件数据） 进行 时空建模和上采样重建。
     def forward(self, spikeInput):
@@ -99,10 +99,10 @@ class NetworkBasic(torch.nn.Module):
 
         #spikes_layer_2 = self.attn2(spikes_layer_2)  # Attention 插入点2
         # PSP 后上采样，然后与前面旁路上采样的 psp1_1 相加(像 ResNet 的残差，加入一条细节旁路路径)，再经过脉冲发放，输出最终脉冲结果。
-        spikes_layer_3 = self.slayer3.spike(self.conv2(self.slayer3.psp(spikes_layer_2)) + psp1_1)
+        #spikes_layer_3 = self.slayer3.spike(self.conv2(self.slayer3.psp(spikes_layer_2)) + psp1_1)
 
         # 这是模型对输入低分辨率事件张量的超分重建输出。
-        return spikes_layer_3
+        return spikes_layer_2
 
 
 
