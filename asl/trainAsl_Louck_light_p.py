@@ -39,7 +39,7 @@ def run(args=None):
 
 
     trainDataset = aslDataset(path_config=dataset_path)
-    testDataset = aslDataset(False, dataset_path)
+    testDataset = aslDataset(False, path_config=dataset_path)
     print("Training sample: %d, Testing sample: %d" % (trainDataset.__len__(), testDataset.__len__()))
     bs = args.bs
 

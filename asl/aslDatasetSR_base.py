@@ -12,12 +12,17 @@ def readNpSpikes(filename, timeUnit=1e-3):
 
 
 class aslDataset(Dataset):
-    def __init__(self, train=True, shape=[180, 240, 200], path_config='../asl_path.txt'):
+    # def __init__(self, train=True, shape=[180, 240, 200], path_config='../asl_path.txt'):
+    def __init__(self, train=True, path_config='../asl_path.txt'):
         self.lrList = []
         self.hrList = []
         self.train = train
-        self.H = shape[0]
-        self.W = shape[1]
+        # self.H = shape[0]
+        # self.W = shape[1]
+        # self.H = int(shape[0])
+        # self.W = int(shape[1])
+        self.H = 180
+        self.W = 240
 
         classList = ['a','b','c','d','e','f','g','h','i','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y']
 
@@ -45,7 +50,9 @@ class aslDataset(Dataset):
                 self.lrList.append(os.path.join(lp, n))
 
 
-        self.nTimeBins = shape[2]
+        # self.nTimeBins = shape[2]
+        # self.nTimeBins = int(shape[2])
+        self.nTimeBins = 200
 
     def __getitem__(self, idx):
         eventHr = readNpSpikes(self.hrList[idx])
