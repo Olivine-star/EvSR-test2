@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 from model_Louck_light import NetworkBasic
-from asl.aslDatasetSR_base import aslDataset
+from nCifar10.ncifarDatasetSR_base import ncifarDataset
 from torch.utils.data import DataLoader
 import datetime
 import slayerSNN as snn
@@ -19,41 +19,41 @@ import matplotlib.pyplot as plt
 # from LOSS import ES1_loss
 from LOSS import ES1_loss_p
 
-
 def run(args=None):
     if args is None:
         args = parser.parse_args()
 
-    shape = [180, 240, 200]
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     device = 'cuda'
     np.random.seed(42)
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
 
+    shape = [128, 128, 1500]
+
 
     # 创建训练数据集，读取训练数据集文件路径
-    dataset_path = "../asl_path.txt"
+    dataset_path = "../cifar_path.txt"
     if args.dataset_path is not None:
         dataset_path = args.dataset_path
 
 
-    trainDataset = aslDataset(path_config=dataset_path)
-    testDataset = aslDataset(False, path_config=dataset_path)
+    trainDataset = ncifarDataset(path_config=dataset_path)
+    testDataset = ncifarDataset(False, dataset_path)
+
+
+
     print("Training sample: %d, Testing sample: %d" % (trainDataset.__len__(), testDataset.__len__()))
     bs = args.bs
 
     trainLoader = DataLoader(dataset=trainDataset, batch_size=bs, shuffle=True, num_workers=args.j, drop_last=True)
     testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=True, num_workers=args.j, drop_last=False)
 
-    networkyaml = 'network.yaml'
-    if args.networkyaml is not None:
-        networkyaml = args.networkyaml
-    netParams = snn.params(networkyaml)
-
+    netParams = snn.params('network.yaml')
     m = NetworkBasic(netParams)
     m = torch.nn.DataParallel(m).to(device)
     print(m)
+
 
     MSE = torch.nn.MSELoss(reduction='mean').to(device)
     optimizer = torch.optim.Adam(m.parameters(), lr=args.lr, amsgrad=True)
@@ -71,7 +71,6 @@ def run(args=None):
     # 创建保存路径，如果路径已存在则不报错（不会覆盖已有同名文件，如果目标文件夹已经存在，它就什么都不做。）
     os.makedirs(savePath, exist_ok=True)
 
-
     print(savePath)
     # m, epoch0 = checkpoint_restore(m, savePath, name='ckpt')
     # 从savePath路径中恢复模型m和epoch0
@@ -86,12 +85,10 @@ def run(args=None):
 
 
 
-
     maxEpoch = args.epoch
     showFreq = args.showFreq
     valLossHistory = []
     tf_writer = SummaryWriter(log_dir=savePath)
-
     with open(os.path.join(savePath, 'config.txt'), 'w') as f:
         for i, config in enumerate(m.module.neuron_config):
             f.writelines('layer%d: theta=%d, tauSr=%.2f, tauRef=%.2f, scaleRef=%.2f, tauRho=%.2f, scaleRho=%.2f\n' % (
@@ -109,8 +106,7 @@ def run(args=None):
             eventLr = eventLr.to(device)
             eventHr = eventHr.to(device)
 
-
-            # === 1. 拆分正负事件通道 ===
+           # === 1. 拆分正负事件通道 ===
             eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
             eventLr_neg = eventLr[:, 1:2, ...]  # [B, 1, H, W, T]
             eventHr_pos = eventHr[:, 0:1, ...]
@@ -131,7 +127,7 @@ def run(args=None):
             # loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
             loss_total, loss, loss_ecm, loss_polarity = ES1_loss_p.training_loss(output, target, shape)
 
-
+            
 
             optimizer.zero_grad()
             loss_total.backward()
@@ -182,9 +178,9 @@ def run(args=None):
             valMetirc = Metric()
             for i, (eventLr, eventHr) in enumerate(testLoader, 0):
                 with torch.no_grad():
+                    num = eventLr.shape[0]
                     eventLr = eventLr.to(device)
                     eventHr = eventHr.to(device)
-
 
                      # === 拆分正负事件 ===
                     eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
@@ -202,11 +198,11 @@ def run(args=None):
 
 
                     loss_total, loss, loss_ecm, loss_polarity= ES1_loss_p.validation_loss(output, target, shape)
-                    
 
                     valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_polarity.item(), loss_total.item(), 1,
                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
-
+                    
+                    
                     if (i) % showFreq == 0:
                         remainIter = (maxEpoch - epoch - 1) * iter_per_epoch + (iter_per_epoch - i - 1)
                         time_now = datetime.datetime.now()
@@ -216,7 +212,7 @@ def run(args=None):
                         hour, minute = divmod(minute, 60)
                         t1 = time_now + datetime.timedelta(seconds=remainSec)
 
-                        avgLossTime, avgLossEcm, avgLossPolarity, avgLoss, avgIS, avgOS, avgGS = valMetirc.getAvg()
+                        avgLossTime, avgLossEcm, avgLoss, avgIS, avgOS, avgGS = valMetirc.getAvg()
                         message = 'Val, Cost %.1fs, Epoch[%d], Iter %d/%d, Time Loss: %f, Ecm Loss: %f, Polarity Loss: %f, Avg Loss: %f,' \
                                 ' IS: %d, OS: %d, GS: %d, Remain time: %02d:%02d:%02d, End at:' % \
                                 (dt, epoch, i, len(testDataset)/args.bs, avgLossTime, avgLossEcm, avgLossPolarity, avgLoss, avgIS, avgOS, avgGS,
@@ -258,12 +254,6 @@ def run(args=None):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] * 0.1
                 print(param_group['lr'])
-
-
-
-
-
-
 
 if __name__ == '__main__':
     import torch.multiprocessing
