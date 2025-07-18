@@ -252,7 +252,7 @@ def run(args=None):
 
             with open(os.path.join(savePath, 'log.txt'), "a") as f:
                 f.write("Epoch: %d, Ecm loss: %f, Spike time loss: %f, Polarity loss: %f, Total loss: %f\n" %
-                        (epoch, avgLossEcm, avgLossTime, avgLoss))
+                        (epoch, avgLossEcm, avgLossPolarity, avgLossTime, avgLoss))
 
         if (epoch+1) % 15 == 0:
             for param_group in optimizer.param_groups:
