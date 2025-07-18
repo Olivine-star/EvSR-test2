@@ -32,7 +32,7 @@ def run(args=None):
     torch.cuda.manual_seed_all(42)
 
 
-    # 创建训练数据集，读取训练数据集文件路径
+    # 创建训练数据集，读取训练数据集文件路径-
     dataset_path = "../asl_path.txt"
     if args.dataset_path is not None:
         dataset_path = args.dataset_path

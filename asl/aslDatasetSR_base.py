@@ -26,7 +26,7 @@ class aslDataset(Dataset):
 
         classList = ['a','b','c','d','e','f','g','h','i','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y']
 
-        # 读取路径配置文件
+        # 读取路径配置文件-
         with open(path_config, 'r') as f:
             lines = f.read().splitlines()
             path_dict = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in lines if '=' in line}
