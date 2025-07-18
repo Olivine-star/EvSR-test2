@@ -39,7 +39,7 @@ def run(args=None):
 
 
     trainDataset = ncifarDataset(path_config=dataset_path)
-    testDataset = ncifarDataset(False, dataset_path)
+    testDataset = ncifarDataset(False, path_config=dataset_path)
 
 
 

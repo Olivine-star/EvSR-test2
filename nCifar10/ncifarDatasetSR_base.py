@@ -16,12 +16,17 @@ def readNpSpikes(filename, timeUnit=1e-3):
 
 
 class ncifarDataset(Dataset):
-    def __init__(self, train=True, shape=[128, 128, 1500], path_config='dataset_cifar.txt'):
+    # def __init__(self, train=True, shape=[128, 128, 1500], path_config='dataset_cifar.txt'):
+    def __init__(self, train=True, path_config='dataset_cifar.txt'):
         self.lrList = []
         self.hrList = []
-        self.H = shape[1]
-        self.W = shape[0]
-        self.nTimeBins = shape[2]
+        # self.H = shape[1]
+        # self.W = shape[0]
+        # self.nTimeBins = shape[2]
+
+        self.H = 128
+        self.W = 128
+        self.nTimeBins = 1500
         # 读取路径配置文件
         with open(path_config, 'r') as f:
             lines = f.read().splitlines()
