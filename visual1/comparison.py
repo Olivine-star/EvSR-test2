@@ -365,12 +365,12 @@ if __name__ == "__main__":
     bbox_width = 30  # Width of magnification region
     bbox_height = 30  # Height of magnification region
     magnify_position = "bottom-right"  # Corner placement: 'top-left', 'top-right', 'bottom-left', 'bottom-right'
-    magnify_scale = 2  # Magnification factor (subtle for academic papers)
+    magnify_scale = 1.5  # Magnification factor
 
     # Color control parameters
     magnify_color = "White"  # Color of magnification border
     positive_color = [1.0, 0.0, 0.0]  # Red for positive events
-    negative_color = [0.0, 1, 0]  # Bright greenish-blue for negative events
+    negative_color = [0.0, 1, 0]  # Bright green for negative events
     background_color = [0.0, 0.0, 0.0]  # Black background
 
     # Generate comparison
