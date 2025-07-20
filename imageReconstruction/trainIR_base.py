@@ -69,7 +69,7 @@ def main():
         m, epoch0 = checkpoint_restore(m, savePath)
     else:
         print("[INFO] No checkpoint found. Starting training from scratch.")
-        epoch0 = -1  # 从头开始训练
+        epoch0 = -1  # 从头开始训练--
 
 
 

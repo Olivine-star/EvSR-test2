@@ -46,7 +46,7 @@ class irDataset(Dataset):
         self.W = shape[1]
         self.nTimeBins = shape[2]
 
-        # ✅ 读取测试列表文件
+        # ✅ 读取测试列表文件---
         with open(test_list_path, 'r') as f:
             lines = f.readlines()
             for line in lines:

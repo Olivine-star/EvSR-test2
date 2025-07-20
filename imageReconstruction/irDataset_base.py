@@ -21,7 +21,7 @@ class irDataset(Dataset):
         self.W = 240
         self.nTimeBins = 50
 
-        # 读取统一配置文件
+        # 读取统一配置文件--
         with open(path_config, 'r') as f:
             lines = f.read().splitlines()
             path_dict = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in lines if '=' in line}
