@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 from model_Louck_light import NetworkBasic
-from nCifar10.ncifarDatasetSR_base import ncifarDataset
+from asl.aslDatasetSR_base import aslDataset
 from torch.utils.data import DataLoader
 import datetime
 import slayerSNN as snn
@@ -17,46 +17,50 @@ torch.backends.cudnn.enabled = False
 
 import matplotlib.pyplot as plt
 # from LOSS import ES1_loss
-from LOSS import ES1_loss_p
+# from LOSS import ES1_loss_p
+from LOSS.ES1_loss_p_learn import LearnableLoss
+
 
 def run(args=None):
     if args is None:
         args = parser.parse_args()
 
+    shape = [180, 240, 200]
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     device = 'cuda'
     np.random.seed(42)
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
 
-    shape = [128, 128, 1500]
+    loss_fn = LearnableLoss().to(device)
 
 
-    # 创建训练数据集，读取训练数据集文件路径
-    dataset_path = "../cifar_path.txt"
+    # 创建训练数据集，读取训练数据集文件路径-
+    dataset_path = "../asl_path.txt"
     if args.dataset_path is not None:
         dataset_path = args.dataset_path
 
 
-    trainDataset = ncifarDataset(path_config=dataset_path)
-    testDataset = ncifarDataset(False, path_config=dataset_path)
-
-
-
+    trainDataset = aslDataset(path_config=dataset_path)
+    testDataset = aslDataset(False, path_config=dataset_path)
     print("Training sample: %d, Testing sample: %d" % (trainDataset.__len__(), testDataset.__len__()))
     bs = args.bs
 
     trainLoader = DataLoader(dataset=trainDataset, batch_size=bs, shuffle=True, num_workers=args.j, drop_last=True)
     testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=True, num_workers=args.j, drop_last=False)
 
-    netParams = snn.params('network.yaml')
+    networkyaml = 'network.yaml'
+    if args.networkyaml is not None:
+        networkyaml = args.networkyaml
+    netParams = snn.params(networkyaml)
+
     m = NetworkBasic(netParams)
     m = torch.nn.DataParallel(m).to(device)
     print(m)
 
-
     MSE = torch.nn.MSELoss(reduction='mean').to(device)
-    optimizer = torch.optim.Adam(m.parameters(), lr=args.lr, amsgrad=True)
+    optimizer = torch.optim.Adam(
+    list(m.parameters()) + list(loss_fn.parameters()), lr=args.lr, amsgrad=True)
 
     iter_per_epoch = int(trainDataset.__len__() / bs)
     time_last = datetime.datetime.now()
@@ -70,6 +74,7 @@ def run(args=None):
 
     # 创建保存路径，如果路径已存在则不报错（不会覆盖已有同名文件，如果目标文件夹已经存在，它就什么都不做。）
     os.makedirs(savePath, exist_ok=True)
+
 
     print(savePath)
     # m, epoch0 = checkpoint_restore(m, savePath, name='ckpt')
@@ -85,10 +90,17 @@ def run(args=None):
 
 
 
+
     maxEpoch = args.epoch
     showFreq = args.showFreq
     valLossHistory = []
+
+    best_weights = {'epoch': -1, 'w1': None, 'w2': None, 'w3': None, 'loss': float('inf')}
+
+
+
     tf_writer = SummaryWriter(log_dir=savePath)
+
     with open(os.path.join(savePath, 'config.txt'), 'w') as f:
         for i, config in enumerate(m.module.neuron_config):
             f.writelines('layer%d: theta=%d, tauSr=%.2f, tauRef=%.2f, scaleRef=%.2f, tauRho=%.2f, scaleRho=%.2f\n' % (
@@ -106,7 +118,8 @@ def run(args=None):
             eventLr = eventLr.to(device)
             eventHr = eventHr.to(device)
 
-           # === 1. 拆分正负事件通道 ===
+
+            # === 1. 拆分正负事件通道 ===
             eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
             eventLr_neg = eventLr[:, 1:2, ...]  # [B, 1, H, W, T]
             eventHr_pos = eventHr[:, 0:1, ...]
@@ -125,9 +138,8 @@ def run(args=None):
 
             # === 5. 计算损失 ===
             # loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
-            loss_total, loss, loss_ecm, loss_polarity = ES1_loss_p.training_loss(output, target, shape)
+            loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
 
-            
 
             optimizer.zero_grad()
             loss_total.backward()
@@ -172,15 +184,24 @@ def run(args=None):
             log_training.write(message + '\n')
             log_training.flush()
 
+
+        # ✅ 打印当前loss各项权重
+        print("Loss Weights: w1=%.4f, w2=%.4f, w3=%.4f" % (
+            torch.exp(-loss_fn.log_w1).item(),
+            torch.exp(-loss_fn.log_w2).item(),
+            torch.exp(-loss_fn.log_w3).item()
+        ))
+
+
         if epoch % 1 == 0:
             m.eval()
             t = datetime.datetime.now()
             valMetirc = Metric()
             for i, (eventLr, eventHr) in enumerate(testLoader, 0):
                 with torch.no_grad():
-                    num = eventLr.shape[0]
                     eventLr = eventLr.to(device)
                     eventHr = eventHr.to(device)
+
 
                      # === 拆分正负事件 ===
                     eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
@@ -197,12 +218,13 @@ def run(args=None):
                     target = torch.cat([eventHr_pos, eventHr_neg], dim=1)
 
 
-                    loss_total, loss, loss_ecm, loss_polarity= ES1_loss_p.validation_loss(output, target, shape)
+                    # loss_total, loss, loss_ecm, loss_polarity= ES1_loss_p.validation_loss(output, target, shape)
+                    loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
+
 
                     valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_polarity.item(), loss_total.item(), 1,
                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
-                    
-                    
+
                     if (i) % showFreq == 0:
                         remainIter = (maxEpoch - epoch - 1) * iter_per_epoch + (iter_per_epoch - i - 1)
                         time_now = datetime.datetime.now()
@@ -243,6 +265,17 @@ def run(args=None):
 
             checkpoint_save(model=m, path=savePath, epoch=epoch, name="ckpt", device=device)
 
+
+            if avgLoss < best_weights['loss']:
+                best_weights['epoch'] = epoch
+                best_weights['w1'] = torch.exp(-loss_fn.log_w1).item()
+                best_weights['w2'] = torch.exp(-loss_fn.log_w2).item()
+                best_weights['w3'] = torch.exp(-loss_fn.log_w3).item()
+                best_weights['loss'] = avgLoss
+
+
+
+
             if (min(valLossHistory) == valLossHistory[-1]):
                 checkpoint_save(model=m, path=savePath, epoch=epoch, name="ckptBest", device=device)
 
@@ -254,6 +287,28 @@ def run(args=None):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] * 0.1
                 print(param_group['lr'])
+
+    print("\n Best validation loss: %.6f at epoch %d" % (best_weights['loss'], best_weights['epoch']))
+    print("   Corresponding weights: w1=%.4f, w2=%.4f, w3=%.4f" % (
+        best_weights['w1'], best_weights['w2'], best_weights['w3']
+    ))
+
+     #  保存为 txt 文件
+    with open(os.path.join(savePath, 'best_loss_weights.txt'), 'w') as f:
+        f.write(f"Best epoch: {best_weights['epoch']}\n")
+        f.write(f"Best Val Loss: {best_weights['loss']:.6f}\n")
+        f.write(f"Best w1: {best_weights['w1']:.6f}\n")
+        f.write(f"Best w2: {best_weights['w2']:.6f}\n")
+        f.write(f"Best w3: {best_weights['w3']:.6f}\n")   
+
+
+    return savePath   
+
+
+
+
+
+
 
 if __name__ == '__main__':
     import torch.multiprocessing

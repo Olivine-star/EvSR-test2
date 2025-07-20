@@ -17,7 +17,10 @@ torch.backends.cudnn.enabled = False
 
 import matplotlib.pyplot as plt
 # from LOSS import ES1_loss
-from LOSS import ES1_loss_p
+# from LOSS import ES1_loss_p
+from LOSS.ES1_loss_p_learn import LearnableLoss
+
+
 
 def run(args=None):
     if args is None:
@@ -28,6 +31,8 @@ def run(args=None):
     np.random.seed(42)
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
+
+    loss_fn = LearnableLoss().to(device)
 
     shape = [128, 128, 1500]
 
@@ -56,7 +61,9 @@ def run(args=None):
 
 
     MSE = torch.nn.MSELoss(reduction='mean').to(device)
-    optimizer = torch.optim.Adam(m.parameters(), lr=args.lr, amsgrad=True)
+    optimizer = torch.optim.Adam(
+    list(m.parameters()) + list(loss_fn.parameters()), lr=args.lr, amsgrad=True)
+
 
     iter_per_epoch = int(trainDataset.__len__() / bs)
     time_last = datetime.datetime.now()
@@ -88,6 +95,10 @@ def run(args=None):
     maxEpoch = args.epoch
     showFreq = args.showFreq
     valLossHistory = []
+
+    best_weights = {'epoch': -1, 'w1': None, 'w2': None, 'w3': None, 'loss': float('inf')}
+
+
     tf_writer = SummaryWriter(log_dir=savePath)
     with open(os.path.join(savePath, 'config.txt'), 'w') as f:
         for i, config in enumerate(m.module.neuron_config):
@@ -125,7 +136,7 @@ def run(args=None):
 
             # === 5. 计算损失 ===
             # loss_total, loss, loss_ecm = ES1_loss.training_loss(output, target, shape)
-            loss_total, loss, loss_ecm, loss_polarity = ES1_loss_p.training_loss(output, target, shape)
+            loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
 
             
 
@@ -172,6 +183,14 @@ def run(args=None):
             log_training.write(message + '\n')
             log_training.flush()
 
+        # ✅ 打印当前loss各项权重
+        print("Loss Weights: w1=%.4f, w2=%.4f, w3=%.4f" % (
+            torch.exp(-loss_fn.log_w1).item(),
+            torch.exp(-loss_fn.log_w2).item(),
+            torch.exp(-loss_fn.log_w3).item()
+        ))
+
+
         if epoch % 1 == 0:
             m.eval()
             t = datetime.datetime.now()
@@ -197,7 +216,8 @@ def run(args=None):
                     target = torch.cat([eventHr_pos, eventHr_neg], dim=1)
 
 
-                    loss_total, loss, loss_ecm, loss_polarity= ES1_loss_p.validation_loss(output, target, shape)
+                    loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
+
 
                     valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_polarity.item(), loss_total.item(), 1,
                                         eventLr.sum().item(), output.sum().item(), eventHr.sum().item())
@@ -243,6 +263,17 @@ def run(args=None):
 
             checkpoint_save(model=m, path=savePath, epoch=epoch, name="ckpt", device=device)
 
+
+            if avgLoss < best_weights['loss']:
+                best_weights['epoch'] = epoch
+                best_weights['w1'] = torch.exp(-loss_fn.log_w1).item()
+                best_weights['w2'] = torch.exp(-loss_fn.log_w2).item()
+                best_weights['w3'] = torch.exp(-loss_fn.log_w3).item()
+                best_weights['loss'] = avgLoss
+
+
+
+
             if (min(valLossHistory) == valLossHistory[-1]):
                 checkpoint_save(model=m, path=savePath, epoch=epoch, name="ckptBest", device=device)
 
@@ -254,6 +285,22 @@ def run(args=None):
             for param_group in optimizer.param_groups:
                 param_group['lr'] = param_group['lr'] * 0.1
                 print(param_group['lr'])
+
+        
+    print("\n Best validation loss: %.6f at epoch %d" % (best_weights['loss'], best_weights['epoch']))
+    print("   Corresponding weights: w1=%.4f, w2=%.4f, w3=%.4f" % (
+        best_weights['w1'], best_weights['w2'], best_weights['w3']
+    ))
+
+    #  保存为 txt 文件
+    with open(os.path.join(savePath, 'best_loss_weights.txt'), 'w') as f:
+        f.write(f"Best epoch: {best_weights['epoch']}\n")
+        f.write(f"Best Val Loss: {best_weights['loss']:.6f}\n")
+        f.write(f"Best w1: {best_weights['w1']:.6f}\n")
+        f.write(f"Best w2: {best_weights['w2']:.6f}\n")
+        f.write(f"Best w3: {best_weights['w3']:.6f}\n")   
+
+    return savePath   
 
 if __name__ == '__main__':
     import torch.multiprocessing
