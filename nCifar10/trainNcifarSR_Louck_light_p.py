@@ -182,7 +182,7 @@ def run(args=None):
                     eventLr = eventLr.to(device)
                     eventHr = eventHr.to(device)
 
-                     # === 拆分正负事件 ===
+                     # === 拆分正负事件 ====
                     eventLr_pos = eventLr[:, 0:1, ...]  # [B, 1, H, W, T]
                     eventLr_neg = eventLr[:, 1:2, ...]
                     eventHr_pos = eventHr[:, 0:1, ...]
