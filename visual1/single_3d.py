@@ -15,7 +15,7 @@ def generate_3d_point_cloud_visualization(
     background_color=[1.0, 1.0, 1.0],
     elevation=30,
     azimuth=60,
-    output_path="event_3d_pointcloud.png",
+    output_filename=None,
     dpi=300,
     figsize=(10, 8),
     max_events=20000,
@@ -48,6 +48,14 @@ def generate_3d_point_cloud_visualization(
     if not os.path.exists(event_path):
         print(f"❌ Event file does not exist: {event_path}")
         return
+
+    # Generate output path in the same directory as input file
+    if output_filename is None:
+        # Extract filename without extension and add 3D suffix
+        base_name = os.path.splitext(os.path.basename(event_path))[0]
+        output_filename = f"{base_name}_3d.png"
+
+    output_path = os.path.join(os.path.dirname(event_path), output_filename)
 
     # Load event data
     print("Loading event data...")
@@ -138,31 +146,46 @@ def generate_3d_point_cloud_visualization(
     ax.view_init(elev=elevation, azim=azimuth)
 
     if not show_axes:
-        # Remove axes, labels, and grid for clean output
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_zticks([])
-        ax.grid(False)
+        # Show grid and axes lines for spatial reference
+        ax.grid(True, alpha=0.3)
 
-        # Remove axis labels and title
+        # Remove axis labels (X, Y, Z text)
         ax.set_xlabel("")
         ax.set_ylabel("")
         ax.set_zlabel("")
 
-        # Make axes invisible
-        ax.xaxis.set_visible(False)
-        ax.yaxis.set_visible(False)
-        ax.zaxis.set_visible(False)
+        # Keep tick positions for grid but remove labels
+        ax.xaxis.set_ticklabels([])
+        ax.yaxis.set_ticklabels([])
+        ax.zaxis.set_ticklabels([])
 
-        # Remove the panes (background planes)
-        ax.xaxis.pane.fill = False
-        ax.yaxis.pane.fill = False
-        ax.zaxis.pane.fill = False
+        # Make tick marks invisible (length = 0) but keep positions for grid
+        ax.xaxis.set_tick_params(length=0)
+        ax.yaxis.set_tick_params(length=0)
+        ax.zaxis.set_tick_params(length=0)
 
-        # Make pane edges invisible
-        ax.xaxis.pane.set_edgecolor("none")
-        ax.yaxis.pane.set_edgecolor("none")
-        ax.zaxis.pane.set_edgecolor("none")
+        # Control axis line appearance - make them thinner and less prominent
+        ax.xaxis.line.set_linewidth(0.5)
+        ax.yaxis.line.set_linewidth(0.5)
+        ax.zaxis.line.set_linewidth(0.5)
+        ax.xaxis.line.set_color((0.6, 0.6, 0.6))
+        ax.yaxis.line.set_color((0.6, 0.6, 0.6))
+        ax.zaxis.line.set_color((0.6, 0.6, 0.6))
+
+        # Keep the panes (background planes) with subtle styling
+        ax.xaxis.pane.fill = True
+        ax.yaxis.pane.fill = True
+        ax.zaxis.pane.fill = True
+
+        # Light gray background for panes
+        ax.xaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+        ax.yaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+        ax.zaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+
+        # Visible pane edges for grid structure
+        ax.xaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
+        ax.yaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
+        ax.zaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
     else:
         # Show axes with labels (research paper style)
         ax.set_xlabel("x", fontsize=12)
@@ -313,23 +336,46 @@ def generate_3d_density_visualization(
     # Set viewing angle
     ax.view_init(elev=elevation, azim=azimuth)
 
-    # Clean up axes (same as point cloud version)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_zticks([])
-    ax.grid(False)
+    # Show grid and axes lines for spatial reference
+    ax.grid(True, alpha=0.3)
+
+    # Remove axis labels (X, Y, Z text)
     ax.set_xlabel("")
     ax.set_ylabel("")
     ax.set_zlabel("")
-    ax.xaxis.set_visible(False)
-    ax.yaxis.set_visible(False)
-    ax.zaxis.set_visible(False)
-    ax.xaxis.pane.fill = False
-    ax.yaxis.pane.fill = False
-    ax.zaxis.pane.fill = False
-    ax.xaxis.pane.set_edgecolor("none")
-    ax.yaxis.pane.set_edgecolor("none")
-    ax.zaxis.pane.set_edgecolor("none")
+
+    # Keep tick positions for grid but remove labels
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.zaxis.set_ticklabels([])
+
+    # Make tick marks invisible (length = 0) but keep positions for grid
+    ax.xaxis.set_tick_params(length=0)
+    ax.yaxis.set_tick_params(length=0)
+    ax.zaxis.set_tick_params(length=0)
+
+    # Control axis line appearance - make them thinner and less prominent
+    ax.xaxis.line.set_linewidth(0.5)
+    ax.yaxis.line.set_linewidth(0.5)
+    ax.zaxis.line.set_linewidth(0.5)
+    ax.xaxis.line.set_color((0.6, 0.6, 0.6))
+    ax.yaxis.line.set_color((0.6, 0.6, 0.6))
+    ax.zaxis.line.set_color((0.6, 0.6, 0.6))
+
+    # Keep the panes (background planes) with subtle styling
+    ax.xaxis.pane.fill = True
+    ax.yaxis.pane.fill = True
+    ax.zaxis.pane.fill = True
+
+    # Light gray background for panes
+    ax.xaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+    ax.yaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+    ax.zaxis.pane.set_facecolor((0.95, 0.95, 0.95, 0.5))
+
+    # Visible pane edges for grid structure
+    ax.xaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
+    ax.yaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
+    ax.zaxis.pane.set_edgecolor((0.7, 0.7, 0.7, 0.8))
 
     # Remove margins
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
@@ -355,14 +401,16 @@ def generate_3d_density_visualization(
 # Example usage
 if __name__ == "__main__":
     # Example file path
-    event_path = r"C:\Users\steve\Project\EvSR-test2\visual1\test\a_0001_hr.npy"
+    event_path = (
+        r"C:\Users\steve\Project\EvSR-test2\visual1\test\cifar\cat\baseline.npy"
+    )
 
     # 3D Point Cloud Parameters (research paper style)
     time_scale = 1.0  # Keep time layers distinct (0-97 time frames)
     point_size = 6.0  # Smaller points to see shape better
     alpha = 0.6  # Lower opacity to see through layers
-    elevation = 30  # Better viewing angle for thumb shape
-    azimuth = 60  # Rotate to see 3D structure
+    elevation = 90  # Better viewing angle for thumb shape
+    azimuth = 0  # Rotate to see 3D structure
 
     # Color control (research paper style)
     positive_color = [1.0, 0.0, 0.0]  # Red for positive events
@@ -381,8 +429,8 @@ if __name__ == "__main__":
         elevation=elevation,
         azimuth=azimuth,
         polarity_filter="both",
-        output_path="event_3d_pointcloud_axes.png",
+        output_filename=None,  # Auto-generate based on input filename
         dpi=300,
         max_events=15000,  # Limit for performance
-        show_axes=True,  # Show axes like research paper
+        show_axes=False,  # Hide axes but keep background planes
     )

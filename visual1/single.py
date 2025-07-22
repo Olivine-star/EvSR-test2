@@ -93,10 +93,31 @@ def add_magnified_inset(
     - magnify_scale: Magnification factor
     - magnify_color: Color of the bounding box
     """
+    # Get image dimensions
+    img_height, img_width = image.shape[:2]
+
+    # Check if the image is too small for magnification
+    if img_width < 20 or img_height < 20:
+        print(
+            f"⚠️  Image too small ({img_height}x{img_width}) for magnification. Skipping inset."
+        )
+        return
+
+    # Ensure bbox is within image bounds
+    bbox_x = max(0, min(bbox_x, img_width - bbox_width))
+    bbox_y = max(0, min(bbox_y, img_height - bbox_height))
+    bbox_width = min(bbox_width, img_width - bbox_x)
+    bbox_height = min(bbox_height, img_height - bbox_y)
+
     # Extract the region to magnify
     magnified_region = image[
         bbox_y : bbox_y + bbox_height, bbox_x : bbox_x + bbox_width
     ]
+
+    # Check if magnified region is valid
+    if magnified_region.size == 0:
+        print("⚠️  Magnified region is empty. Skipping inset.")
+        return
 
     # Add clean bounding box around the original region
     rect = Rectangle(
@@ -114,29 +135,32 @@ def add_magnified_inset(
     inset_width = int(bbox_width * magnify_scale)
     inset_height = int(bbox_height * magnify_scale)
 
+    # Dynamic margin calculation based on image size
+    # For small images, use smaller margins
+    margin = max(2, min(8, img_width // 10, img_height // 10))
+
     # Determine inset position based on magnify_position
     # Note: In matplotlib, y=0 is at the top, y=1 is at the bottom for inset_axes
-    margin = 8  # Margin from edges
     if magnify_position == "top-right":
         inset_x = img_width - inset_width - margin
-        inset_y = (
-            img_height - inset_height - margin
-        )  # Fixed: top means bottom in inset coordinates
+        inset_y = img_height - inset_height - margin
     elif magnify_position == "top-left":
         inset_x = margin
-        inset_y = (
-            img_height - inset_height - margin
-        )  # Fixed: top means bottom in inset coordinates
+        inset_y = img_height - inset_height - margin
     elif magnify_position == "bottom-right":
         inset_x = img_width - inset_width - margin
-        inset_y = margin  # Fixed: bottom means top in inset coordinates
+        inset_y = margin
     elif magnify_position == "bottom-left":
         inset_x = margin
-        inset_y = margin  # Fixed: bottom means top in inset coordinates
+        inset_y = margin
     else:
         raise ValueError(
             "magnify_position must be one of: 'top-left', 'top-right', 'bottom-left', 'bottom-right'"
         )
+
+    # Ensure inset position is within bounds
+    inset_x = max(0, min(inset_x, img_width - inset_width))
+    inset_y = max(0, min(inset_y, img_height - inset_height))
 
     # Create inset axes
     inset_ax = ax.inset_axes(
@@ -175,12 +199,14 @@ def generate_single_visualization(
     positive_color=[1.0, 0.0, 0.0],
     negative_color=[0.0, 1.0, 0.0],
     background_color=[0.0, 0.0, 0.0],
-    output_path="single_result.png",
+    output_filename=None,
     dpi=300,
     figsize=(8, 6),
+    show_axes=False,
+    show_title=False,
 ):
     """
-    Generate pure event visualization image without any text, axes, or labels
+    Generate event visualization image with optional axes and title
 
     Parameters:
     - event_path: Path to event .npy file
@@ -197,14 +223,24 @@ def generate_single_visualization(
     - output_path: Output file path
     - dpi: Output resolution
     - figsize: Figure size (width, height)
+    - show_axes: Whether to show coordinate axes
+    - show_title: Whether to show title and labels
 
-    Note: Outputs pure image without titles, axes, labels, or whitespace
+    Note: Can output pure image or image with axes and labels
     """
 
     # Check if file exists
     if not os.path.exists(event_path):
         print(f"❌ Event file does not exist: {event_path}")
         return
+
+    # Generate output path in the same directory as input file
+    if output_filename is None:
+        # Extract filename without extension and add 2D suffix
+        base_name = os.path.splitext(os.path.basename(event_path))[0]
+        output_filename = f"{base_name}_2d.png"
+
+    output_path = os.path.join(os.path.dirname(event_path), output_filename)
 
     # Load event data
     print("Loading event data...")
@@ -228,41 +264,100 @@ def generate_single_visualization(
         background_color,
     )
 
-    # Create clean figure without any text or axes
+    # Create figure with optional axes and labels
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    # Remove all axes, labels, ticks, and borders
-    ax.imshow(event_image, aspect="equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.axis("off")
+    # Display the event image
+    ax.imshow(event_image, aspect="equal", origin="upper")
 
-    # Add magnified inset
-    add_magnified_inset(
-        ax,
-        event_image,
-        bbox_x,
-        bbox_y,
-        bbox_width,
-        bbox_height,
-        magnify_position,
-        magnify_scale,
-        magnify_color,
-    )
+    if show_axes:
+        # Show coordinate axes with proper labels
+        ax.set_xlabel("X (pixels)", fontsize=12)
+        ax.set_ylabel("Y (pixels)", fontsize=12)
 
-    # Remove all margins and padding for pure image output
-    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # Set tick marks at reasonable intervals
+        img_height, img_width = event_image.shape[:2]
+        x_ticks = np.linspace(0, img_width - 1, min(10, img_width // 10 + 1), dtype=int)
+        y_ticks = np.linspace(
+            0, img_height - 1, min(10, img_height // 10 + 1), dtype=int
+        )
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
 
-    # Save as pure image without any whitespace or borders
-    plt.savefig(
-        output_path,
-        dpi=dpi,
-        bbox_inches="tight",
-        pad_inches=0,
-        facecolor=background_color,
-        edgecolor="none",
-    )
-    print(f"✅ Pure image saved to: {output_path}")
+        # Add grid for better readability
+        ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
+
+        if show_title:
+            # Add informative title
+            total_events = len(events)
+            pos_events = np.sum(events[:, 3] > 0)
+            neg_events = total_events - pos_events
+            title = "Event Stream Visualization\n"
+            title += (
+                f"Total: {total_events} events (Pos: {pos_events}, Neg: {neg_events})\n"
+            )
+            title += f"Image size: {img_height}×{img_width} pixels"
+            ax.set_title(title, fontsize=10, pad=20)
+
+            # Create legend for polarity colors
+            red_patch = patches.Patch(
+                color=positive_color, label="Positive polarity (p > 0)"
+            )
+            blue_patch = patches.Patch(
+                color=negative_color, label="Negative polarity (p ≤ 0)"
+            )
+            ax.legend(
+                handles=[red_patch, blue_patch],
+                loc="upper right",
+                bbox_to_anchor=(1.15, 1),
+            )
+    else:
+        # Remove all axes, labels, ticks, and borders for pure image
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.axis("off")
+
+    # Add magnified inset if magnify_scale > 0
+    if magnify_scale > 0 and bbox_width > 0 and bbox_height > 0:
+        add_magnified_inset(
+            ax,
+            event_image,
+            bbox_x,
+            bbox_y,
+            bbox_width,
+            bbox_height,
+            magnify_position,
+            magnify_scale,
+            magnify_color,
+        )
+
+    # Adjust layout based on whether axes are shown
+    if show_axes:
+        plt.tight_layout()
+    else:
+        # Remove all margins and padding for pure image output
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+    # Save the figure
+    if show_axes:
+        plt.savefig(
+            output_path,
+            dpi=dpi,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+    else:
+        plt.savefig(
+            output_path,
+            dpi=dpi,
+            bbox_inches="tight",
+            pad_inches=0,
+            facecolor=background_color,
+            edgecolor="none",
+        )
+
+    print(f"✅ Image saved to: {output_path}")
 
     # Display the figure
     plt.show()
@@ -273,23 +368,25 @@ def generate_single_visualization(
 # Example usage and configuration
 if __name__ == "__main__":
     # Example file path - modify according to your data
-    event_path = r"C:\Users\steve\Project\EvSR-test2\visual1\test\a_0001_hr.npy"
+    event_path = (
+        r"C:\Users\steve\Project\EvSR-test2\visual1\test\cifar\cat\baseline.npy"
+    )
 
     # User control parameters
-    bbox_x = 100  # Top-left x coordinate of magnification region
-    bbox_y = 100  # Top-left y coordinate of magnification region
-    bbox_width = 30  # Width of magnification region
-    bbox_height = 30  # Height of magnification region
+    bbox_x = 0  # Top-left x coordinate of magnification region
+    bbox_y = 0  # Top-left y coordinate of magnification region
+    bbox_width = 0  # Width of magnification region
+    bbox_height = 0  # Height of magnification region
     magnify_position = "bottom-right"  # Corner placement
-    magnify_scale = 1.5  # Magnification factor
-    magnify_color = "white"  # Color of magnification border
+    magnify_scale = 0  # Magnification factor
+    magnify_color = "lime"  # Color of magnification border
 
-    # Color control parameters
-    positive_color = [1.0, 0.0, 0.0]  # Red for positive events
-    negative_color = [0.0, 1.0, 0.0]  # Green for negative events
-    background_color = [0.0, 0.0, 0.0]  # Black background
+    # Color control parameters (following memory: red for positive, blue for negative, white background)
+    positive_color = [1.0, 0.0, 0.0]  # Red for positive events (p > 0)
+    negative_color = [0.0, 0.0, 1.0]  # Blue for negative events (p ≤ 0)
+    background_color = [1.0, 1.0, 1.0]  # White background
 
-    # Generate pure image visualization
+    # Generate visualization with axes and title
     generate_single_visualization(
         event_path=event_path,
         bbox_x=bbox_x,
@@ -303,7 +400,9 @@ if __name__ == "__main__":
         negative_color=negative_color,
         background_color=background_color,
         polarity_filter="both",
-        output_path="event_image.png",
+        output_filename=None,  # Auto-generate based on input filename
         dpi=300,
-        figsize=(8, 6),
+        figsize=(10, 8),
+        show_axes=False,
+        show_title=False,
     )
