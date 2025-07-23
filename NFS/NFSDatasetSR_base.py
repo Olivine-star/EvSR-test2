@@ -103,7 +103,7 @@ class nfsDataset(Dataset):
             self.hrList.append(os.path.join(self.hrPath, hr_file))
             self.lrList.append(os.path.join(self.lrPath, lr_file))
 
-        # ★ 从第一个HR样本推断 H, W, nTimeBins
+        # ★ 从第一个HR样本推断 H, W, nTimeBins=
         first_event = np.load(self.hrList[0])
         self.W = int(first_event[:, 1].max()) + 1
         self.H = int(first_event[:, 2].max()) + 1

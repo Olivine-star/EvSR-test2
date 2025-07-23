@@ -29,7 +29,7 @@ def main():
     # trainDataset = nfsDataset(train=True)
     # testDataset = nfsDataset(train=False)
 
-    # ① 实例化数据集之后，直接读取真实 shape
+    # ① 实例化数据集之后，直接读取真实 shape=
     trainDataset = nfsDataset(train=True)
     testDataset  = nfsDataset(train=False)
 
