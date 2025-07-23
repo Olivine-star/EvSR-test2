@@ -1,7 +1,7 @@
 import sys
 sys.path.append('../')
 from model import NetworkBasic
-from nCifar10.ncifarDatasetSR_base import ncifarDataset
+from NFS.NFSDatasetSR_base import nfsDataset
 from torch.utils.data import DataLoader
 import datetime
 import slayerSNN as snn
@@ -26,8 +26,8 @@ def main():
     torch.cuda.manual_seed_all(42)
 
     shape = [128, 128, 1500]
-    trainDataset = ncifarDataset(train=True, shape=shape)
-    testDataset = ncifarDataset(train=False, shape=shape)
+    trainDataset = nfsDataset(train=True)
+    testDataset = nfsDataset(train=False)
 
     print("Training sample: %d, Testing sample: %d" % (trainDataset.__len__(), testDataset.__len__()))
     bs = args.bs

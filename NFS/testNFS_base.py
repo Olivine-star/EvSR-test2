@@ -23,7 +23,7 @@ def readNpSpikes(filename, timeUnit=1e-3):
 # -------------------------------
 # ✅ 路径读取函数（内联）
 # -------------------------------
-def load_path_config(path_config='../dataset_cifar.txt'):
+def load_path_config(path_config='../nfs_path.txt'):
     path_dict = {}
     with open(path_config, 'r') as f:
         for line in f:
@@ -42,91 +42,57 @@ ckptPath = paths.get('ckptPath', '')
 
 
 
-class cifarDataset(Dataset):
+# ================================
+# nfsDataset：去掉 classList 版本
+# ================================
+class nfsDataset(Dataset):
     def __init__(self):
-        self.lrList = []
-        self.hrList = []
+        self.lrList, self.hrList, self.path = [], [], []
+
+        # 读取路径
         self.hrPath = paths.get('test_hr', '')
         self.lrPath = paths.get('test_lr', '')
-        classList = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+        os.makedirs(savepath, exist_ok=True)          # 只建一次输出目录
+        
+        # 基本形状
+        self.H, self.W, self.nTimeBins = 128, 128, 1500
 
-        self.H = 128
-        self.W = 128
+        # ① 列出并排序全部 HR/LR 文件（假设都是 .npy）
+        hr_files = sorted([f for f in os.listdir(self.hrPath) if f.endswith('.npy')])
+        lr_files = sorted([f for f in os.listdir(self.lrPath) if f.endswith('.npy')])
 
-        self.path = []
-        for k in classList:
-            hp = os.path.join(self.hrPath, k)
-            lp = os.path.join(self.lrPath, k)
-            if not os.path.exists(os.path.join(savepath, k)):
-                os.makedirs(os.path.join(savepath, k))
-            assert len(os.listdir(hp)) == len(os.listdir(lp))
-            list = os.listdir(hp)
-            print("Read data ", k, len(os.listdir(lp)))
+        # ② 确保文件名一一对应
+        assert hr_files == lr_files, "⚠️ HR 和 LR 文件名不一致，请检查！"
 
-            for c, n in enumerate(list):
-                self.hrList.append(os.path.join(hp, n))
-                self.lrList.append(os.path.join(lp, n))
-                self.path.append(os.path.join(str(k), n))
-        self.nTimeBins = 1500
+        # ③ 构建文件列表
+        for fname in hr_files:
+            self.hrList.append(os.path.join(self.hrPath, fname))
+            self.lrList.append(os.path.join(self.lrPath, fname))
+            self.path.append(fname)                   # 仅文件名，用于保存结果
+
+        print(f"🔹 读取 {len(self.hrList)} 对 HR/LR 样本")
 
     def __getitem__(self, idx):
+        # 读取事件 → spike tensor
         eventHr = readNpSpikes(self.hrList[idx])
         eventLr = readNpSpikes(self.lrList[idx])
 
-        eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, int(self.H/2), int(self.W/2), self.nTimeBins)))
+        eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, self.H // 2, self.W // 2, self.nTimeBins)))
         eventHr1 = eventHr.toSpikeTensor(torch.zeros((2, self.H, self.W, self.nTimeBins)))
 
         assert eventHr1.sum() == len(eventHr.x)
         assert eventLr1.sum() == len(eventLr.x)
-        path = self.path[idx]
-        return eventLr1, eventHr1, path
+
+        return eventLr1, eventHr1, self.path[idx]     # path 只是文件名
 
     def __len__(self):
         return len(self.lrList)
 
 
-# device = 'cuda'
-# testDataset = cifarDataset()
-
-# with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
-#     # 将ckptPath写入文件
-#     f.writelines(ckptPath)
-
-# bs = 1
-# testLoader = DataLoader(dataset=testDataset, batch_size=bs, shuffle=False, num_workers=1, drop_last=False)
-
-# netParams = snn.params('network.yaml')
-# # m = NetworkBasic(netParams)
-# m = NetworkBasic(netParams).to("cuda")
-# m = torch.nn.DataParallel(m).to(device)
-# m.eval()
-
-# print(netParams['simulation'])
-
-# m, epoch0 = checkpoint_restore(m, ckptPath, name="ckptBest")
-
-
-# for k, (eventLr, eventHr, path) in enumerate(testLoader, 0):
-#     with torch.no_grad():
-#         eventLr = eventLr.to("cuda")
-#         eventHr = eventHr.to("cuda")
-
-#         output = m(eventLr)
-
-#         eventList = getEventFromTensor(output)
-#         e = eventList[0]
-#         e = e[:, [0,2,1,3]]
-#         new_path = os.path.join(savepath, path[0])
-#         np.save(new_path, e.astype(np.int32))
-
-#     if k % 100 == 0:
-#         print(k, '/', len(testDataset))
-
-
 
 def main():
     device = 'cuda'
-    testDataset = cifarDataset()
+    testDataset = nfsDataset()
 
     with open(os.path.join(savepath, 'ckpt.txt'), 'w') as f:
         f.writelines(ckptPath)
@@ -153,7 +119,8 @@ def main():
             eventList = getEventFromTensor(output)
             e = eventList[0]
             e = e[:, [0,2,1,3]]
-            new_path = os.path.join(savepath, path[0])
+            new_path = os.path.join(savepath, path[0])  # path[0] 现在就是 'xxx.npy'
+
             np.save(new_path, e.astype(np.int32))
 
         if k % 100 == 0:
