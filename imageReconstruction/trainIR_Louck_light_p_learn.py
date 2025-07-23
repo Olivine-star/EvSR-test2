@@ -55,6 +55,9 @@ def main():
     iter_per_epoch = int(trainDataset.__len__() / bs)
     time_last = datetime.datetime.now()
 
+    # 创建保存文件的时间戳唯一标识文件名
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
     # savePath = args.savepath
     # savePath += "_bs%d" % args.bs
     # if args.add is not None:
