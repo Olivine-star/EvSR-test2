@@ -46,47 +46,58 @@ ckptPath = paths.get('ckptPath', '')
 # nfsDataset：去掉 classList 版本
 # ================================
 class nfsDataset(Dataset):
-    def __init__(self):
-        self.lrList, self.hrList, self.path = [], [], []
+    def __init__(self, train=True, path_config='../nfs_path.txt'):
+        self.lrList = []
+        self.hrList = []
+        self.samplingTime = 1.0  # ms
 
-        # 读取路径
-        self.hrPath = paths.get('test_hr', '')
-        self.lrPath = paths.get('test_lr', '')
-        os.makedirs(savepath, exist_ok=True)          # 只建一次输出目录
-        
-        # 基本形状
-        self.H, self.W, self.nTimeBins = 128, 128, 1500
+        # 读取路径配置文件
+        with open(path_config, 'r') as f:
+            lines = f.read().splitlines()
+            path_dict = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in lines if '=' in line}
 
-        # ① 列出并排序全部 HR/LR 文件（假设都是 .npy）
-        hr_files = sorted([f for f in os.listdir(self.hrPath) if f.endswith('.npy')])
-        lr_files = sorted([f for f in os.listdir(self.lrPath) if f.endswith('.npy')])
+        if train:
+            self.hrPath = path_dict.get('train_hr', '')
+            self.lrPath = path_dict.get('train_lr', '')
+        else:
+            self.hrPath = path_dict.get('test_hr', '')
+            self.lrPath = path_dict.get('test_lr', '')
 
-        # ② 确保文件名一一对应
-        assert hr_files == lr_files, "⚠️ HR 和 LR 文件名不一致，请检查！"
+        # 获取所有文件名（假设HR和LR命名完全对应）
+        hr_files = sorted(os.listdir(self.hrPath))
+        lr_files = sorted(os.listdir(self.lrPath))
 
-        # ③ 构建文件列表
-        for fname in hr_files:
-            self.hrList.append(os.path.join(self.hrPath, fname))
-            self.lrList.append(os.path.join(self.lrPath, fname))
-            self.path.append(fname)                   # 仅文件名，用于保存结果
+        assert len(hr_files) == len(lr_files), "HR and LR file counts do not match."
 
-        print(f"🔹 读取 {len(self.hrList)} 对 HR/LR 样本")
+        for hr_file, lr_file in zip(hr_files, lr_files):
+            self.hrList.append(os.path.join(self.hrPath, hr_file))
+            self.lrList.append(os.path.join(self.lrPath, lr_file))
+
+        # ★ 从第一个HR样本推断 H, W, nTimeBins
+        first_event = np.load(self.hrList[0])
+        self.W = int(first_event[:, 1].max()) + 1
+        self.H = int(first_event[:, 2].max()) + 1
+        t_max = first_event[:, 0].max() - first_event[:, 0].min()
+        self.nTimeBins = int(np.ceil(t_max / self.samplingTime)) + 1
 
     def __getitem__(self, idx):
-        # 读取事件 → spike tensor
         eventHr = readNpSpikes(self.hrList[idx])
         eventLr = readNpSpikes(self.lrList[idx])
 
-        eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, self.H // 2, self.W // 2, self.nTimeBins)))
-        eventHr1 = eventHr.toSpikeTensor(torch.zeros((2, self.H, self.W, self.nTimeBins)))
+        eventLr1 = eventLr.toSpikeTensor(
+            torch.zeros((2, int(self.H / 2), int(self.W / 2), self.nTimeBins)),
+            samplingTime=self.samplingTime
+        )
+        eventHr1 = eventHr.toSpikeTensor(
+            torch.zeros((2, self.H, self.W, self.nTimeBins)),
+            samplingTime=self.samplingTime
+        )
 
-        assert eventHr1.sum() == len(eventHr.x)
-        assert eventLr1.sum() == len(eventLr.x)
-
-        return eventLr1, eventHr1, self.path[idx]     # path 只是文件名
+        return eventLr1, eventHr1, os.path.basename(self.hrList[idx])
 
     def __len__(self):
         return len(self.lrList)
+
 
 
 
@@ -115,6 +126,7 @@ def main():
             eventHr = eventHr.to("cuda")
 
             output = m(eventLr)
+            eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
             eventList = getEventFromTensor(output)
             e = eventList[0]

@@ -25,9 +25,19 @@ def main():
     torch.manual_seed(42)
     torch.cuda.manual_seed_all(42)
 
-    shape = [128, 128, 1500]
+    # shape = [224, 126, 1500]
+    # trainDataset = nfsDataset(train=True)
+    # testDataset = nfsDataset(train=False)
+
+    # ① 实例化数据集之后，直接读取真实 shape
     trainDataset = nfsDataset(train=True)
-    testDataset = nfsDataset(train=False)
+    testDataset  = nfsDataset(train=False)
+
+    shape = [trainDataset.H, trainDataset.W, trainDataset.nTimeBins]   # ← 替换原来的手写 [224,126,1500]
+
+
+
+
 
     print("Training sample: %d, Testing sample: %d" % (trainDataset.__len__(), testDataset.__len__()))
     bs = args.bs
@@ -93,6 +103,7 @@ def main():
             eventLr = eventLr.to(device)
             eventHr = eventHr.to(device)
             output = m(eventLr)
+            eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
             loss = MSE(output, eventHr)
             loss_ecm = MSE(torch.sum(output[:, :, :, :, 0:50], dim=4), torch.sum(eventHr[:, :, :, :, 0:50], dim=4))
@@ -158,6 +169,7 @@ def main():
                     eventLr = eventLr.to(device)
                     eventHr = eventHr.to(device)
                     output = m(eventLr)
+                    eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
                     loss = MSE(output, eventHr)
                     loss_ecm = MSE(torch.sum(output[:, :, :, :, 0:50], dim=4), torch.sum(eventHr[:, :, :, :, 0:50], dim=4))
