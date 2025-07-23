@@ -21,7 +21,7 @@ def readNpSpikes(filename, timeUnit=1e-3):
 
 
 # -------------------------------
-# ✅ 路径读取函数（内联）
+# ✅ 路径读取函数（内联）=
 # -------------------------------
 def load_path_config(path_config='../nfs_path.txt'):
     path_dict = {}

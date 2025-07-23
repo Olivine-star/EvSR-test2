@@ -18,7 +18,7 @@ class nfsDataset(Dataset):
         self.W = 128
         self.nTimeBins = 1500
 
-        # 读取路径配置文件
+        # 读取路径配置文件=
         with open(path_config, 'r') as f:
             lines = f.read().splitlines()
             path_dict = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in lines if '=' in line}
