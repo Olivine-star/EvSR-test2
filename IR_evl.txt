@@ -1,0 +1,5 @@
+
+test_root=C:/code/EventSR-Project/EvSR-test2/dataset/ImageReconstruction/test
+
+
+device=cuda
