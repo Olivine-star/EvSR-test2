@@ -444,7 +444,7 @@ if __name__ == "__main__":
     magnify_color = "yellow"  # Color of magnification border
     positive_color = [1.0, 0.0, 0.0]  # Red for positive events (p > 0)
     negative_color = [0.0, 1.0, 0.0]  # Green for negative events (p ≤ 0)
-    background_color = [0.0, 0.0, 0.0]  # Black background
+    background_color = [1.0, 1.0, 1.0]  # Black background
 
     # Generate comparison
     generate_comparison_visualization(
