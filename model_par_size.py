@@ -1,5 +1,5 @@
 import torch
-from model_Louck_light import NetworkBasic  # 替换成你的文件路径
+from model_Louck_light import NetworkBasic  # 替换成你的文件路径=
 import slayerSNN as snn
 
 def count_parameters(model):
