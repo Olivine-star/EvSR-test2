@@ -14,12 +14,16 @@ BASE_PATH = r"C:\Users\steve\Dataset\EVSR\nmnist"
 
 # Row configurations - each row represents a different sample
 # subpath includes the digit folder and filename: "digit/filename.npy"
+# polarity: "both" (default dual-polarity), "positive" (red density), "negative" (blue density)
 # Example structure: BASE_PATH/method_folder/digit/filename.npy
 ROW_CONFIGS = [
-    # Digit 0, file 0.npy
-    {"label": "(1)", "subpath": "0/0.npy"},
-    {"label": "(2)", "subpath": "2/1.npy"},
-    {"label": "(3)", "subpath": "7/1.npy"},
+    # Digit 0, file 0.npy - HAS polarity="both" = use density method with Blues colormap
+    {"label": "Pos", "subpath": "0/0.npy", "polarity": "positive"},
+    {"label": "Neg", "subpath": "0/0.npy", "polarity": "negative"},
+    {"label": "Pos", "subpath": "2/1.npy", "polarity": "positive"},
+    {"label": "Neg", "subpath": "2/1.npy", "polarity": "negative"},
+    {"label": "Pos", "subpath": "7/1.npy", "polarity": "positive"},
+    {"label": "Neg", "subpath": "7/1.npy", "polarity": "negative"},
 ]
 
 # Column configurations - each column represents a different method
@@ -27,11 +31,11 @@ ROW_CONFIGS = [
 COLUMN_CONFIGS = [
     {"label": "LR", "folder_path": "SR_Test/SR_Test/LR"},
     {"label": "HR-GT", "folder_path": "SR_Test/SR_Test/HR"},
-    {"label": "Li et al. (baseline)", "folder_path": "baseline/HRPre"},
+    {"label": "Li et al.", "folder_path": "baseline/HRPre"},
     # Dual-Layer SNN with Learnable Loss (light-p-learn)
-    {"label": "Ours (light-p-learn)", "folder_path": "light-p-learn/HRPre"},
+    {"label": "Ours1", "folder_path": "light-p-learn/HRPre"},
     # Ultralight SNN (louck-light-p-learn)
-    {"label": "Ours (louck-light-p-learn)", "folder_path": "Louck_light_p_learn/HRPre"},
+    {"label": "Ours2", "folder_path": "Louck_light_p_learn/HRPre"},
 ]
 
 # Magnification bounding box for each row (x, y, width, height in pixels)
@@ -86,7 +90,7 @@ if __name__ == "__main__":
         colors=COLORS,
         output_filename="nmnist_academic_comparison.png",
         dpi=300,
-        figsize_per_cell=(2.5, 2.5),
+        figsize_per_cell=(2, 2),  # Much smaller cells to make spacing appear tighter
         show_row_labels=True,
         show_column_labels=True,
         enable_magnification=False,  # 🔧 Set to True to enable magnification
@@ -95,16 +99,16 @@ if __name__ == "__main__":
         max_intensity=1.0,  # Maximum color intensity (0.0-1.0)
         upscale_columns=[0],  # Upscale LR column (index 0) for better comparison
         upscale_factor=2,  # 2x upscaling for LR to match HR resolution
-        smooth_visualization=True,  # Apply Gaussian smoothing for smoother appearance
+        smooth_visualization=False,  # Apply Gaussian smoothing for smoother appearance
         sigma=0.5,  # Smoothing strength (higher = more smooth)
         enhance_colors=True,  # Enhance color saturation and contrast
         # 🔥 NEW: Event filtering to reduce purple mixing and show clearer polarity
         event_sample_ratio=1,  # Use only 30% of events to reduce mixing
-        time_window=(0.0, 1, 0),  # Use all time, or try (0.0, 0.5) for first half
+        time_window=(0.0, 1),  # Use all time, or try (0.0, 0.5) for first half
         polarity_separation=1.5,  # Enhance polarity separation (1.0=normal, 2.0=max)
         # 🎨 Layout customization - adjust these values as needed
-        wspace=0.01,  # Width spacing between images (smaller = more compact)
-        hspace=0.01,  # Height spacing between images (smaller = more compact)
+        wspace=0.0,  # Width spacing between images (zero spacing)
+        hspace=0.0,  # Height spacing between images (zero spacing)
         left_margin=0.03,  # Left margin for row labels (smaller = labels closer to edge)
         bottom_margin=0.12,  # Bottom margin for column labels
         row_label_x=0.01,  # Row label X position (smaller = closer to edge)

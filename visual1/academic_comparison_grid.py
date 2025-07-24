@@ -5,6 +5,103 @@ from matplotlib.patches import Rectangle
 import os
 
 
+def create_single_polarity_density_visualization(
+    events, img_size, polarity_filter="positive", upscale_factor=1
+):
+    """
+    Create density visualization following our_base对比.py logic EXACTLY
+    Uses matplotlib colormap to generate pure image without axes or labels
+    Supports 'both', 'positive', and 'negative' polarity filters
+    Supports upscaling for LR images
+
+    Parameters:
+    - events: Event data array
+    - img_size: Tuple (height, width) for output image size
+    - polarity_filter: 'both', 'positive', or 'negative'
+    - upscale_factor: Upscaling factor for LR images (default: 1)
+
+    Returns:
+    - RGB image array with density visualization (pure image, no axes)
+    """
+    # Apply upscaling if needed
+    if upscale_factor > 1:
+        # Scale up the target image size
+        upscaled_size = (img_size[0] * upscale_factor, img_size[1] * upscale_factor)
+        pixel_event_counts = np.zeros(upscaled_size, dtype=int)
+
+        # Count events with upscaling
+        for event in events:
+            ts, x, y, p = event
+            # Scale coordinates
+            x_scaled = int(x * upscale_factor)
+            y_scaled = int(y * upscale_factor)
+
+            # Check bounds for upscaled image
+            if 0 <= y_scaled < upscaled_size[0] and 0 <= x_scaled < upscaled_size[1]:
+                # Apply polarity filter
+                if (
+                    polarity_filter == "both"
+                    or (polarity_filter == "positive" and p > 0)
+                    or (polarity_filter == "negative" and p <= 0)
+                ):
+                    # Fill upscaled block (nearest neighbor upsampling)
+                    for dy in range(upscale_factor):
+                        for dx in range(upscale_factor):
+                            new_y = y_scaled + dy
+                            new_x = x_scaled + dx
+                            if new_y < upscaled_size[0] and new_x < upscaled_size[1]:
+                                pixel_event_counts[new_y, new_x] += 1
+
+        # Update img_size to upscaled size
+        img_size = upscaled_size
+    else:
+        # Original algorithm for non-upscaled images
+        pixel_event_counts = np.zeros(img_size, dtype=int)
+
+        # Count events for each pixel (following our_base对比.py logic exactly)
+        for event in events:
+            ts, x, y, p = event
+            x_int, y_int = int(x), int(y)
+
+            # Check bounds
+            if 0 <= y_int < img_size[0] and 0 <= x_int < img_size[1]:
+                # Apply polarity filter
+                if (
+                    polarity_filter == "both"
+                    or (polarity_filter == "positive" and p > 0)
+                    or (polarity_filter == "negative" and p <= 0)
+                ):
+                    pixel_event_counts[y_int, x_int] += 1
+
+    # Use matplotlib colormap exactly like our_base对比.py
+    if polarity_filter == "both":
+        cmap_name = "Purples"
+    elif polarity_filter == "positive":
+        cmap_name = "Reds"
+    elif polarity_filter == "negative":
+        cmap_name = "Blues"
+    else:
+        cmap_name = "Purples"  # fallback
+
+    # Get the colormap
+    import matplotlib.cm as cm
+
+    cmap = cm.get_cmap(cmap_name)
+
+    # Normalize the counts to [0, 1] range for colormap
+    if np.max(pixel_event_counts) > 0:
+        normalized_counts = pixel_event_counts.astype(np.float32) / np.max(
+            pixel_event_counts
+        )
+    else:
+        normalized_counts = pixel_event_counts.astype(np.float32)
+
+    # Apply colormap to get RGB image (exactly like plt.imshow does)
+    rgb_image = cmap(normalized_counts)[:, :, :3]  # Remove alpha channel, keep RGB
+
+    return rgb_image.astype(np.float32)
+
+
 def gaussian_smooth_2d(image, sigma=1.0):
     """Apply Gaussian smoothing to 2D image using numpy"""
     if sigma <= 0:
@@ -492,13 +589,33 @@ def generate_academic_comparison_grid(
     n_cols = len(column_configs)
     figsize = (figsize_per_cell[0] * n_cols, figsize_per_cell[1] * n_rows)
 
-    # Create figure with specified spacing
-    fig, axes = plt.subplots(
+    # Create figure with GridSpec for precise spacing control
+    from matplotlib.gridspec import GridSpec
+
+    fig = plt.figure(figsize=figsize)
+
+    # Create GridSpec with precise spacing control
+    gs = GridSpec(
         n_rows,
         n_cols,
-        figsize=figsize,
-        gridspec_kw={"hspace": hspace, "wspace": wspace},
+        figure=fig,
+        wspace=wspace,  # This will work properly with GridSpec
+        hspace=hspace,  # This will work properly with GridSpec
+        left=left_margin if show_row_labels else 0.02,
+        right=0.98,
+        bottom=bottom_margin if show_column_labels else 0.02,
+        top=0.98,
     )
+
+    # Create axes array manually
+    axes = []
+    for i in range(n_rows):
+        row_axes = []
+        for j in range(n_cols):
+            ax = fig.add_subplot(gs[i, j])
+            row_axes.append(ax)
+        axes.append(row_axes)
+    axes = np.array(axes)
     fig.patch.set_facecolor(colors["background"])
 
     # Ensure axes is 2D array
@@ -570,24 +687,35 @@ def generate_academic_comparison_grid(
                     target_height = max_height
                     target_width = max_width
 
-                # Create visualization with appropriate target size
-                image = create_event_visualization(
-                    events,
-                    (target_height, target_width),
-                    "both",
-                    colors["positive"],
-                    colors["negative"],
-                    colors["background"],
-                    use_density=use_density,
-                    max_intensity=max_intensity,
-                    upscale_factor=current_upscale_factor,
-                    smooth_visualization=smooth_visualization,  # Use parameter
-                    sigma=sigma,  # Use parameter
-                    enhance_colors=enhance_colors,  # Use parameter
-                    event_sample_ratio=event_sample_ratio,  # 🔥 NEW parameter
-                    time_window=time_window,  # 🔥 NEW parameter
-                    polarity_separation=polarity_separation,  # 🔥 NEW parameter
-                )
+                # Check if this row has polarity parameter specified
+                if "polarity" in row_config:
+                    # Use the new density visualization method (following our_base对比.py)
+                    row_polarity = row_config["polarity"]  # Get the specified polarity
+                    image = create_single_polarity_density_visualization(
+                        events,
+                        (target_height, target_width),
+                        polarity_filter=row_polarity,
+                        upscale_factor=current_upscale_factor,  # Pass upscale factor
+                    )
+                else:
+                    # Use default original visualization method (no polarity parameter specified)
+                    image = create_event_visualization(
+                        events,
+                        (target_height, target_width),
+                        "both",  # Default to both polarities
+                        colors["positive"],
+                        colors["negative"],
+                        colors["background"],
+                        use_density=use_density,
+                        max_intensity=max_intensity,
+                        upscale_factor=current_upscale_factor,
+                        smooth_visualization=smooth_visualization,  # Use parameter
+                        sigma=sigma,  # Use parameter
+                        enhance_colors=enhance_colors,  # Use parameter
+                        event_sample_ratio=event_sample_ratio,  # 🔥 NEW parameter
+                        time_window=time_window,  # 🔥 NEW parameter
+                        polarity_separation=polarity_separation,  # 🔥 NEW parameter
+                    )
             else:
                 print(f"⚠️  File not found: {file_path}")
                 # Create empty black image with unified size
@@ -595,7 +723,7 @@ def generate_academic_comparison_grid(
                     (max_height, max_width, 3), colors["background"], dtype=np.float32
                 )
 
-            # Display image with fixed aspect ratio
+            # Display image with fixed aspect ratio and NO PADDING
             ax.imshow(image, aspect="equal", origin="upper", interpolation="nearest")
 
             # Set fixed axis limits to ensure consistent image sizes
@@ -662,18 +790,7 @@ def generate_academic_comparison_grid(
                     labelpad=col_label_pad,
                 )
 
-    # Adjust layout with customizable parameters FIRST
-    # Don't use tight_layout as it interferes with manual spacing control
-    if show_row_labels and show_column_labels:
-        plt.subplots_adjust(
-            left=left_margin, bottom=bottom_margin, wspace=wspace, hspace=hspace
-        )
-    elif show_row_labels:
-        plt.subplots_adjust(left=left_margin, wspace=wspace, hspace=hspace)
-    elif show_column_labels:
-        plt.subplots_adjust(bottom=bottom_margin, wspace=wspace, hspace=hspace)
-    else:
-        plt.subplots_adjust(wspace=wspace, hspace=hspace)
+    # Layout is already handled by GridSpec, no need for subplots_adjust
 
     # Add row labels AFTER layout adjustment - get actual subplot positions
     if show_row_labels:
