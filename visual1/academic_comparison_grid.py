@@ -313,6 +313,7 @@ def add_magnified_inset(
     magnify_scale=2.0,
     magnify_color="white",
     magnify_linewidth=2.0,
+    upscale_factor=1,
 ):
     """Add magnified inset with white border"""
     img_height, img_width = image.shape[:2]
@@ -421,7 +422,6 @@ def generate_academic_comparison_grid(
     hspace=0.01,  # Height spacing between subplots
     left_margin=0.05,  # Left margin for row labels
     bottom_margin=0.12,  # Bottom margin for column labels
-    tight_layout_pad=0.5,  # Padding for tight_layout
     row_label_x=0.01,  # X position of row labels (0-1)
     row_label_fontsize=12,  # Font size for row labels
     col_label_fontsize=12,  # Font size for column labels
@@ -452,11 +452,6 @@ def generate_academic_comparison_grid(
     - smooth_visualization: Apply Gaussian smoothing for better appearance (default: True)
     - sigma: Gaussian smoothing parameter, higher = more smooth (default: 0.8)
     - enhance_colors: Enhance color saturation and contrast (default: True)
-
-    🔥 NEW Event filtering (to reduce purple mixing and show clearer polarity):
-    - event_sample_ratio: Ratio of events to use (0.0-1.0), e.g., 0.3 for 30% of events (default: 1.0)
-    - time_window: (start_ratio, end_ratio) to select time window, e.g., (0.0, 0.5) for first half (default: None)
-    - polarity_separation: How much to separate positive/negative colors, higher = more distinct (0.5-2.0) (default: 1.0)
 
     Layout customization:
     - wspace: Width spacing between subplots (default: 0.01)
@@ -497,8 +492,13 @@ def generate_academic_comparison_grid(
     n_cols = len(column_configs)
     figsize = (figsize_per_cell[0] * n_cols, figsize_per_cell[1] * n_rows)
 
-    # Create figure
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    # Create figure with specified spacing
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=figsize,
+        gridspec_kw={"hspace": hspace, "wspace": wspace},
+    )
     fig.patch.set_facecolor(colors["background"])
 
     # Ensure axes is 2D array
@@ -559,10 +559,21 @@ def generate_academic_comparison_grid(
                     current_upscale_factor = upscale_factor
                     print(f"   🔍 Upscaling column {col_idx} by {upscale_factor}x")
 
-                # Create visualization with unified size and density control
+                # For upscaled columns, use original size and let the function handle upscaling
+                # For non-upscaled columns, use the unified size directly
+                if current_upscale_factor > 1:
+                    # Use original size (before upscaling) for upscaled columns
+                    target_height = max_height // upscale_factor
+                    target_width = max_width // upscale_factor
+                else:
+                    # Use unified size for non-upscaled columns
+                    target_height = max_height
+                    target_width = max_width
+
+                # Create visualization with appropriate target size
                 image = create_event_visualization(
                     events,
-                    (max_height, max_width),  # Use unified size
+                    (target_height, target_width),
                     "both",
                     colors["positive"],
                     colors["negative"],
@@ -609,17 +620,29 @@ def generate_academic_comparison_grid(
                 bbox_config = bbox_configs[row_idx]
                 magnify_config = magnify_configs[row_idx]
 
+                # Use the same bbox coordinates for all images
+                bbox_x = bbox_config["x"]
+                bbox_y = bbox_config["y"]
+                bbox_width = bbox_config["width"]
+                bbox_height = bbox_config["height"]
+
+                # Determine current upscale factor for this column
+                current_upscale_factor = 1
+                if upscale_columns and col_idx in upscale_columns:
+                    current_upscale_factor = upscale_factor
+
                 add_magnified_inset(
                     ax,
                     image,
-                    bbox_config["x"],
-                    bbox_config["y"],
-                    bbox_config["width"],
-                    bbox_config["height"],
+                    bbox_x,
+                    bbox_y,
+                    bbox_width,
+                    bbox_height,
                     magnify_position=magnify_config["position"],
                     magnify_scale=magnify_config["scale"],
                     magnify_color=colors["magnify"],
                     magnify_linewidth=2.0,
+                    upscale_factor=current_upscale_factor,
                 )
 
             # Set axis properties
@@ -639,26 +662,8 @@ def generate_academic_comparison_grid(
                     labelpad=col_label_pad,
                 )
 
-    # Add row labels - customizable position and style
-    if show_row_labels:
-        # Choose text color based on background
-        text_color = "black" if sum(colors["background"]) > 1.5 else "white"
-        for row_idx, row_config in enumerate(row_configs):
-            # Add row label on the left
-            fig.text(
-                row_label_x,  # Customizable X position
-                1 - (row_idx + 0.5) / n_rows,
-                row_config["label"],
-                fontsize=row_label_fontsize,  # Customizable font size
-                fontweight="bold",
-                color=text_color,
-                ha="center",
-                va="center",
-                rotation=0,
-            )
-
-    # Adjust layout with customizable parameters
-    plt.tight_layout(pad=tight_layout_pad)
+    # Adjust layout with customizable parameters FIRST
+    # Don't use tight_layout as it interferes with manual spacing control
     if show_row_labels and show_column_labels:
         plt.subplots_adjust(
             left=left_margin, bottom=bottom_margin, wspace=wspace, hspace=hspace
@@ -669,6 +674,29 @@ def generate_academic_comparison_grid(
         plt.subplots_adjust(bottom=bottom_margin, wspace=wspace, hspace=hspace)
     else:
         plt.subplots_adjust(wspace=wspace, hspace=hspace)
+
+    # Add row labels AFTER layout adjustment - get actual subplot positions
+    if show_row_labels:
+        # Choose text color based on background
+        text_color = "black" if sum(colors["background"]) > 1.5 else "white"
+        for row_idx, row_config in enumerate(row_configs):
+            # Get the actual position of the first subplot in this row
+            ax_pos = axes[row_idx, 0].get_position()
+            # Calculate the vertical center of this subplot
+            row_center_y = ax_pos.y0 + (ax_pos.height / 2)
+
+            # Add row label on the left
+            fig.text(
+                row_label_x,  # Customizable X position
+                row_center_y,  # Actual subplot center Y position
+                row_config["label"],
+                fontsize=row_label_fontsize,  # Customizable font size
+                fontweight="bold",
+                color=text_color,
+                ha="center",
+                va="center",
+                rotation=0,
+            )
 
     # Save figure in the same directory as the script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -685,79 +713,3 @@ def generate_academic_comparison_grid(
     plt.show()
 
     return fig, axes
-
-
-# Example usage and configuration
-if __name__ == "__main__":
-    # Base path containing all data folders
-    base_path = r"C:\Users\steve\Downloads\nmnist"
-
-    # Row configurations - each row represents a different sample/image
-    # subpath includes the subfolder and filename from the method folder
-    row_configs = [
-        {"label": "(1)", "subpath": "3/9.npy"},  # Sample 1: folder 3, file 9.npy
-        {"label": "(2)", "subpath": "0/1.npy"},  # Sample 2: folder 0, file 1.npy
-        {"label": "(3)", "subpath": "5/7.npy"},  # Sample 3: folder 5, file 7.npy
-        {"label": "(4)", "subpath": "2/4.npy"},  # Sample 4: folder 2, file 4.npy
-    ]
-
-    # Column configurations - each column represents a different method
-    # folder_path is the path from base_path to the folder containing the files
-    column_configs = [
-        {"label": "LR", "folder_path": "SR_Test/SR_Test/LR"},
-        {"label": "HR-GT", "folder_path": "SR_Test/SR_Test/HR"},
-        {"label": "Li et al. (baseline)", "folder_path": "baseline/HRPre"},
-        {"label": "(a)Dual-Layer SNN (light)", "folder_path": "light-p-learn/HRPre"},
-        {
-            "label": "(b)Dual-Layer SNN with Learnable Loss",
-            "folder_path": "light_p_learn/HRPre/y",
-        },
-        {
-            "label": "(c)Ultralight SNN (louck-light)",
-            "folder_path": "Louck_light/HRPre/y",
-        },
-        {
-            "label": "(d)Ultralight SNN (louck-light-p-learn)",
-            "folder_path": "Louck_light_p_learn/HRPre/y",
-        },
-    ]
-
-    # Bbox configurations for magnification (one per row)
-    bbox_configs = [
-        {"x": 15, "y": 15, "width": 25, "height": 25},  # Row 1 magnification area
-        {"x": 20, "y": 10, "width": 25, "height": 25},  # Row 2 magnification area
-        {"x": 10, "y": 20, "width": 25, "height": 25},  # Row 3 magnification area
-        {"x": 25, "y": 15, "width": 25, "height": 25},  # Row 4 magnification area
-    ]
-
-    # Magnification configurations (one per row)
-    magnify_configs = [
-        {"position": "top-right", "scale": 2.5},  # Row 1 magnification settings
-        {"position": "top-left", "scale": 2.5},  # Row 2 magnification settings
-        {"position": "bottom-right", "scale": 2.5},  # Row 3 magnification settings
-        {"position": "bottom-left", "scale": 2.5},  # Row 4 magnification settings
-    ]
-
-    # Color settings
-    colors = {
-        "positive": [1.0, 0.0, 0.0],  # Red for positive events
-        "negative": [0.0, 0.0, 1.0],  # Blue for negative events
-        "background": [1.0, 1.0, 1.0],  # White background
-        "magnify": "Yellow",  # Yellow magnification border
-    }
-
-    # Generate the academic comparison grid
-    generate_academic_comparison_grid(
-        base_path=base_path,
-        row_configs=row_configs,
-        column_configs=column_configs,
-        bbox_configs=bbox_configs,
-        magnify_configs=magnify_configs,
-        colors=colors,
-        output_filename="nmnist_academic_comparison.png",
-        dpi=300,
-        figsize_per_cell=(2.5, 2.5),  # Size of each cell
-        show_row_labels=True,
-        show_column_labels=True,
-        enable_magnification=True,  # Set to False to disable magnification
-    )

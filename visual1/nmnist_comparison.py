@@ -17,7 +17,7 @@ BASE_PATH = r"C:\Users\steve\Dataset\EVSR\nmnist"
 # Example structure: BASE_PATH/method_folder/digit/filename.npy
 ROW_CONFIGS = [
     # Digit 0, file 0.npy
-    {"label": "(1)", "subpath": "0/0.npy"},  
+    {"label": "(1)", "subpath": "0/0.npy"},
     {"label": "(2)", "subpath": "2/1.npy"},
     {"label": "(3)", "subpath": "7/1.npy"},
 ]
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         figsize_per_cell=(2.5, 2.5),
         show_row_labels=True,
         show_column_labels=True,
-        enable_magnification=False,  # 🔧 Set to False to disable magnification
+        enable_magnification=False,  # 🔧 Set to True to enable magnification
         # 🎨 Event visualization - NEW ENHANCED FEATURES!
         use_density=True,  # Show event density (True) vs binary colors (False)
         max_intensity=1.0,  # Maximum color intensity (0.0-1.0)
@@ -100,14 +100,13 @@ if __name__ == "__main__":
         enhance_colors=True,  # Enhance color saturation and contrast
         # 🔥 NEW: Event filtering to reduce purple mixing and show clearer polarity
         event_sample_ratio=1,  # Use only 30% of events to reduce mixing
-        time_window=(0.0, 1,0),  # Use all time, or try (0.0, 0.5) for first half
+        time_window=(0.0, 1, 0),  # Use all time, or try (0.0, 0.5) for first half
         polarity_separation=1.5,  # Enhance polarity separation (1.0=normal, 2.0=max)
         # 🎨 Layout customization - adjust these values as needed
         wspace=0.01,  # Width spacing between images (smaller = more compact)
         hspace=0.01,  # Height spacing between images (smaller = more compact)
-        left_margin=0.02,  # Left margin for row labels (smaller = labels closer to edge)
+        left_margin=0.03,  # Left margin for row labels (smaller = labels closer to edge)
         bottom_margin=0.12,  # Bottom margin for column labels
-        tight_layout_pad=0.5,  # Overall padding
         row_label_x=0.01,  # Row label X position (smaller = closer to edge)
         row_label_fontsize=12,  # Row label font size
         col_label_fontsize=12,  # Column label font size

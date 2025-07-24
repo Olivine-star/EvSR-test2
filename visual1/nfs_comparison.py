@@ -18,6 +18,7 @@ Features:
 
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from academic_comparison_grid import generate_academic_comparison_grid
@@ -45,6 +46,20 @@ COLUMN_CONFIGS = [
 # Base path - modify this to your NFS dataset location
 BASE_PATH = r"C:\Users\steve\Downloads\nfs"
 
+# Magnification bounding box for each row (x, y, width, height in pixels)
+BBOX_CONFIGS = [
+    {"x": 15, "y": 15, "width": 25, "height": 25},  # Row 1
+    {"x": 20, "y": 10, "width": 25, "height": 25},  # Row 2
+    {"x": 10, "y": 20, "width": 25, "height": 25},  # Row 3
+]
+
+# Magnification settings for each row
+MAGNIFY_CONFIGS = [
+    {"position": "top-right", "scale": 2.5},  # Row 1
+    {"position": "top-left", "scale": 2.5},  # Row 2
+    {"position": "bottom-right", "scale": 2.5},  # Row 3
+]
+
 # Color scheme for NFS event visualization (optimized for motion data)
 COLORS = {
     "positive": [0.0, 1.0, 0.0],  # Green for positive events (forward motion)
@@ -62,7 +77,7 @@ if __name__ == "__main__":
     print(f"📁 Base path: {BASE_PATH}")
     print(f"📊 Grid size: {len(ROW_CONFIGS)} rows × {len(COLUMN_CONFIGS)} columns")
     print(f"📄 Sample subpaths: {[row['subpath'] for row in ROW_CONFIGS]}")
-    
+
     # Show example file paths for verification
     print("\n📂 Example file paths:")
     for i, row in enumerate(ROW_CONFIGS[:3], 1):
@@ -71,12 +86,14 @@ if __name__ == "__main__":
             print(f"   [{i},{j}]: {example_path}")
         if i < len(ROW_CONFIGS[:3]):
             print("   ...")
-    
+
     # Generate the comparison grid
     fig, axes = generate_academic_comparison_grid(
         base_path=BASE_PATH,
         row_configs=ROW_CONFIGS,
         column_configs=COLUMN_CONFIGS,
+        bbox_configs=BBOX_CONFIGS,
+        magnify_configs=MAGNIFY_CONFIGS,
         colors=COLORS,
         output_filename="nfs_academic_comparison.png",
         dpi=300,
@@ -101,7 +118,7 @@ if __name__ == "__main__":
         hspace=0.01,  # Height spacing between images (smaller = more compact)
         left_margin=0.02,  # Left margin for row labels (smaller = labels closer to edge)
         bottom_margin=0.12,  # Bottom margin for column labels
-        tight_layout_ad=0.5,  # Overall padding
+        tight_layout_pad=0.5,  # Overall padding
         row_label_x=0.01,  # Row label X position (smaller = closer to edge)
         row_label_fontsize=12,  # Row label font size
         col_label_fontsize=12,  # Column label font size

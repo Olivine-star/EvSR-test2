@@ -18,6 +18,7 @@ Features:
 
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from academic_comparison_grid import generate_academic_comparison_grid
@@ -32,8 +33,8 @@ BASE_PATH = r"C:\Users\steve\Dataset\EVSR\asl"
 # Row configurations (different ASL signs/gestures)
 ROW_CONFIGS = [
     # category a, file a_3880.npy
-    {"label": "(1)", "subpath": "a/a_3880.npy"},  
-    {"label": "(2)", "subpath": "c/c_3870.npy"},
+    {"label": "(1)", "subpath": "q/q_0002.npy"},
+    {"label": "(2)", "subpath": "s/s_0006.npy"},
     {"label": "(3)", "subpath": "h/h_4061.npy"},
     {"label": "(4)", "subpath": "o/o_4005.npy"},
 ]
@@ -43,26 +44,26 @@ COLUMN_CONFIGS = [
     {"label": "LR", "folder_path": "SR_Test/SR_Test/LR"},
     {"label": "HR-GT", "folder_path": "SR_Test/SR_Test/HR"},
     {"label": "Baseline", "folder_path": "baseline/baseline-HRPre"},
-    #{"label": "Light", "folder_path": "light/HRPre"},
-    #{"label": "Light-P-Learn", "folder_path": "light-p-learn/HRPre"},
+    # {"label": "Light", "folder_path": "light/HRPre"},
+    # {"label": "Light-P-Learn", "folder_path": "light-p-learn/HRPre"},
     {"label": "Louck-Light-P", "folder_path": "Louck_light_p/HRPre"},
-    {"label": "Louck-Light-P_learn", "folder_path": "Louck_light_p_learn/HRPre"}
+    {"label": "Louck-Light-P_learn", "folder_path": "Louck_light_p_learn/HRPre"},
 ]
 
 # Magnification bounding box for each row (x, y, width, height in pixels)
 BBOX_CONFIGS = [
-    {"x": 15, "y": 15, "width": 25, "height": 25},  # Row 1
-    {"x": 20, "y": 10, "width": 25, "height": 25},  # Row 2
-    {"x": 10, "y": 20, "width": 25, "height": 25},  # Row 3
-    {"x": 25, "y": 15, "width": 25, "height": 25},  # Row 4
+    {"x": 100, "y": 90, "width": 30, "height": 30},  # Row 1
+    {"x": 90, "y": 90, "width": 30, "height": 30},  # Row 2
+    {"x": 100, "y": 100, "width": 30, "height": 30},  # Row 3
+    {"x": 100, "y": 110, "width": 30, "height": 30},  # Row 4
 ]
 
 # Magnification settings for each row
 MAGNIFY_CONFIGS = [
-    {"position": "top-right", "scale": 2.5},  # Row 1
-    {"position": "top-left", "scale": 2.5},  # Row 2
-    {"position": "bottom-right", "scale": 2.5},  # Row 3
-    {"position": "bottom-left", "scale": 2.5},  # Row 4
+    {"position": "top-right", "scale": 2},  # Row 1
+    {"position": "top-right", "scale": 2},  # Row 2
+    {"position": "bottom-left", "scale": 2},  # Row 3
+    {"position": "bottom-right", "scale": 2},  # Row 4
 ]
 
 # Color settings for event visualization
@@ -70,7 +71,7 @@ COLORS = {
     "positive": [1.0, 0.0, 0.0],  # red for positive events
     "negative": [0.0, 0.0, 1.0],  # blue for negative events
     "background": [1.0, 1.0, 1.0],  # White background
-    "magnify": "white",  # White magnification border
+    "magnify": "Yellow",  # White magnification border
 }
 # =============================================================================
 # MAIN GENERATION FUNCTION
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     print(f"📁 Base path: {BASE_PATH}")
     print(f"📊 Grid size: {len(ROW_CONFIGS)} rows × {len(COLUMN_CONFIGS)} columns")
     print(f"📄 Sample subpaths: {[row['subpath'] for row in ROW_CONFIGS]}")
-    
+
     # Show example file paths for verification
     print("\n📂 Example file paths:")
     for i, row in enumerate(ROW_CONFIGS[:3], 1):
@@ -90,12 +91,14 @@ if __name__ == "__main__":
             print(f"   [{i},{j}]: {example_path}")
         if i < len(ROW_CONFIGS[:3]):
             print("   ...")
-    
+
     # Generate the comparison grid
     fig, axes = generate_academic_comparison_grid(
         base_path=BASE_PATH,
         row_configs=ROW_CONFIGS,
         column_configs=COLUMN_CONFIGS,
+        bbox_configs=BBOX_CONFIGS,
+        magnify_configs=MAGNIFY_CONFIGS,
         colors=COLORS,
         output_filename="asl_academic_comparison.png",
         dpi=300,
@@ -111,16 +114,15 @@ if __name__ == "__main__":
         smooth_visualization=True,  # Apply Gaussian smoothing for smoother appearance
         sigma=0.5,  # Smoothing strength (higher = more smooth)
         enhance_colors=True,  # Enhance color saturation and contrast
-        # 🔥 NEW: Event filtering to reduce purple mixing and show clearer polarity
-        event_sample_ratio=1,  # Use only 40% of events to reduce mixing (good for ASL gestures)
+        # Event filtering to reduce purple mixing and show clearer polarity
+        event_sample_ratio=1,  # Use only 40% of events to reduce mixing
         time_window=None,  # Use all time, or try (0.0, 0.5) for first half
         polarity_separation=1,  # Enhance polarity separation (1.0=normal, 2.0=max)
         # 🎨 Layout customization - adjust these values as needed
         wspace=0.01,  # Width spacing between images (smaller = more compact)
-        hspace=0.01,  # Height spacing between images (smaller = more compact)
-        left_margin=0.02,  # Left margin for row labels (smaller = labels closer to edge)
+        hspace=0.001,  # Height spacing between images (smaller = more compact)
+        left_margin=0.025,  # Left margin for row labels (smaller = labels closer to edge)
         bottom_margin=0.12,  # Bottom margin for column labels
-        tight_layout_pad=0.5,  # Overall padding
         row_label_x=0.01,  # Row label X position (smaller = closer to edge)
         row_label_fontsize=12,  # Row label font size
         col_label_fontsize=12,  # Column label font size
