@@ -67,7 +67,7 @@ def main():
     os.makedirs(savePath, exist_ok=True)
 
     print(savePath)
-    # m, epoch0 = checkpoint_restore(m, savePath, name='ckpt')
+    # m, epoch0 = checkpoint_restore(m, savePath, name='ckpt')=
     # 从savePath路径中恢复模型m和epoch0
     # m, epoch0 = checkpoint_restore(m, savePath)
     #用不同的 --savepath(train.bat改路径) 开启全新训练；如果以后这个文件夹里有 ckpt.pth，又能自动续训，两者兼容。

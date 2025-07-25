@@ -1,85 +1,26 @@
-# import torch
-# import numpy as np
-# from torch.utils.data import Dataset
-# import os
-# from slayerSNN.spikeFileIO import event
-
-
-
-# def readNpSpikes(filename, timeUnit=1e-3):
-#     npEvent = np.load(filename)
-#     return event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
-
-# class nfsDataset(Dataset):
-#     def __init__(self, train=True, path_config='../nfs_path.txt'):
-#         self.lrList = []
-#         self.hrList = []
-#         self.H = 125
-#         self.W = 223
-#         self.nTimeBins = 1500
-
-#         # 读取路径配置文件=
-#         with open(path_config, 'r') as f:
-#             lines = f.read().splitlines()
-#             path_dict = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in lines if '=' in line}
-
-#         if train:
-#             self.hrPath = path_dict.get('train_hr', '')
-#             self.lrPath = path_dict.get('train_lr', '')
-#         else:
-#             self.hrPath = path_dict.get('test_hr', '')
-#             self.lrPath = path_dict.get('test_lr', '')
-
-#         # 获取所有文件名（假设HR和LR命名完全对应）
-#         hr_files = sorted(os.listdir(self.hrPath))
-#         lr_files = sorted(os.listdir(self.lrPath))
-
-#         assert len(hr_files) == len(lr_files), "HR and LR file counts do not match."
-
-#         for hr_file, lr_file in zip(hr_files, lr_files):
-#             self.hrList.append(os.path.join(self.hrPath, hr_file))
-#             self.lrList.append(os.path.join(self.lrPath, lr_file))
-
-#     def __getitem__(self, idx):
-#         eventHr = readNpSpikes(self.hrList[idx])
-#         eventLr = readNpSpikes(self.lrList[idx])
-
-#         eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, int(self.H / 2), int(self.W / 2), self.nTimeBins)))
-#         eventHr1 = eventHr.toSpikeTensor(torch.zeros((2, self.H, self.W, self.nTimeBins)))
-
-#         assert eventHr1.sum() == len(eventHr.x)
-#         assert eventLr1.sum() == len(eventLr.x)
-
-#         return eventLr1, eventHr1
-
-#     def __len__(self):
-#         return len(self.lrList)
-
-
-
-
-
-
-
-
-
 import torch
 import numpy as np
 from torch.utils.data import Dataset
 import os
 from slayerSNN.spikeFileIO import event
 
-def readNpSpikes(filename, timeUnit=1e-3):
+
+def readNpSpikes(filename):
     npEvent = np.load(filename)
-    npEvent[:, 0] -= npEvent[:, 0].min()  # ★ 时间从0开始
-    return event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * timeUnit * 1e3)
+    npEvent[:, 0] = npEvent[:, 0] - npEvent[:, 0].min()  # ← 归一化时间从0开始
+    return event(npEvent[:, 1], npEvent[:, 2], npEvent[:, 3], npEvent[:, 0] * 1e-3)
 
 
-class nfsDataset(Dataset):
+
+
+class nfsDataset(Dataset):    
     def __init__(self, train=True, path_config='../nfs_path.txt'):
         self.lrList = []
         self.hrList = []
-        self.samplingTime = 1.0  # ms
+        self.train = train
+        self.H = 125
+        self.W = 223
+        self.nTimeBins = 50
 
         # 读取路径配置文件
         with open(path_config, 'r') as f:
@@ -93,35 +34,28 @@ class nfsDataset(Dataset):
             self.hrPath = path_dict.get('test_hr', '')
             self.lrPath = path_dict.get('test_lr', '')
 
-        # 获取所有文件名（假设HR和LR命名完全对应）
-        hr_files = sorted(os.listdir(self.hrPath))
-        lr_files = sorted(os.listdir(self.lrPath))
+        # ✅ 遍历所有 HR 子文件夹和 .npy 文件
+        for root, _, files in os.walk(self.hrPath):
+            for file in files:
+                if file.endswith('.npy'):
+                    rel_path = os.path.relpath(os.path.join(root, file), self.hrPath)
+                    hr_full = os.path.join(self.hrPath, rel_path)
+                    lr_full = os.path.join(self.lrPath, rel_path)
+                    if os.path.exists(lr_full):
+                        self.hrList.append(hr_full)
+                        self.lrList.append(lr_full)
+                    else:
+                        print(f"[警告] 跳过未匹配的样本: {rel_path}")
 
-        assert len(hr_files) == len(lr_files), "HR and LR file counts do not match."
 
-        for hr_file, lr_file in zip(hr_files, lr_files):
-            self.hrList.append(os.path.join(self.hrPath, hr_file))
-            self.lrList.append(os.path.join(self.lrPath, lr_file))
-
-        # ★ 从第一个HR样本推断 H, W, nTimeBins=
-        first_event = np.load(self.hrList[0])
-        self.W = int(first_event[:, 1].max()) + 1
-        self.H = int(first_event[:, 2].max()) + 1
-        t_max = first_event[:, 0].max() - first_event[:, 0].min()
-        self.nTimeBins = int(np.ceil(t_max / self.samplingTime)) + 1
+        print(f"[nfsDataset] Loaded {len(self.hrList)} samples from HR and LR.")
 
     def __getitem__(self, idx):
         eventHr = readNpSpikes(self.hrList[idx])
         eventLr = readNpSpikes(self.lrList[idx])
 
-        eventLr1 = eventLr.toSpikeTensor(
-            torch.zeros((2, int(self.H / 2), int(self.W / 2), self.nTimeBins)),
-            samplingTime=self.samplingTime
-        )
-        eventHr1 = eventHr.toSpikeTensor(
-            torch.zeros((2, self.H, self.W, self.nTimeBins)),
-            samplingTime=self.samplingTime
-        )
+        eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, int(self.H / 2), int(self.W / 2), self.nTimeBins)))
+        eventHr1 = eventHr.toSpikeTensor(torch.zeros((2, self.H, self.W, self.nTimeBins)))
 
         return eventLr1, eventHr1
 
