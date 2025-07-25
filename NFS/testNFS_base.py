@@ -119,7 +119,7 @@ def main():
             eventHr = eventHr.to("cuda")
 
             output = m(eventLr)
-            eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
+            # eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
             eventList = getEventFromTensor(output)
             e = eventList[0]
