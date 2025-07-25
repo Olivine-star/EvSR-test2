@@ -1,8 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import matplotlib.cm as cm
 from matplotlib.patches import Rectangle
 import os
+import random
+
+# Set font to Times New Roman
+plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["font.serif"] = ["Times New Roman"]
 
 
 def create_single_polarity_density_visualization(
@@ -84,8 +89,6 @@ def create_single_polarity_density_visualization(
         cmap_name = "Purples"  # fallback
 
     # Get the colormap
-    import matplotlib.cm as cm
-
     cmap = cm.get_cmap(cmap_name)
 
     # Normalize the counts to [0, 1] range for colormap
@@ -200,8 +203,6 @@ def create_event_visualization(
 
         # Event sampling
         if event_sample_ratio < 1.0 and len(events) > 0:
-            import random
-
             sample_size = int(len(events) * event_sample_ratio)
             events = random.sample(list(events), sample_size)
 
@@ -412,24 +413,39 @@ def add_magnified_inset(
     magnify_linewidth=2.0,
     upscale_factor=1,
 ):
-    """Add magnified inset with white border"""
+    """Add magnified inset with white border
+    bbox coordinates are in normalized coordinates (0-1) for extent=[0,1,0,1]
+    """
     img_height, img_width = image.shape[:2]
 
-    # Ensure bbox is within bounds
-    bbox_x = max(0, min(bbox_x, img_width - bbox_width))
-    bbox_y = max(0, min(bbox_y, img_height - bbox_height))
-    bbox_width = min(bbox_width, img_width - bbox_x)
-    bbox_height = min(bbox_height, img_height - bbox_y)
+    # For image extraction, use original pixel coordinates directly
+    # Don't use the flipped bbox_x, bbox_y which are for Rectangle display
+    # Instead, extract from the original pixel coordinates passed to this function
+    # But we need to get them from the calling function...
+    # Actually, let's reconstruct from the normalized coordinates
+    pixel_bbox_x = int(bbox_x * img_width)
+    # For Y: bbox_y was flipped, so we need to unflip it for image extraction
+    original_bbox_y = 1.0 - bbox_y - bbox_height  # Unflip the Y coordinate
+    pixel_bbox_y = int(original_bbox_y * img_height)
+    pixel_bbox_width = int(bbox_width * img_width)
+    pixel_bbox_height = int(bbox_height * img_height)
 
-    # Extract magnified region
+    # Ensure pixel bbox is within bounds
+    pixel_bbox_x = max(0, min(pixel_bbox_x, img_width - pixel_bbox_width))
+    pixel_bbox_y = max(0, min(pixel_bbox_y, img_height - pixel_bbox_height))
+    pixel_bbox_width = min(pixel_bbox_width, img_width - pixel_bbox_x)
+    pixel_bbox_height = min(pixel_bbox_height, img_height - pixel_bbox_y)
+
+    # Extract magnified region using pixel coordinates
     magnified_region = image[
-        bbox_y : bbox_y + bbox_height, bbox_x : bbox_x + bbox_width
+        pixel_bbox_y : pixel_bbox_y + pixel_bbox_height,
+        pixel_bbox_x : pixel_bbox_x + pixel_bbox_width,
     ]
 
     if magnified_region.size == 0:
         return
 
-    # Add bounding box
+    # Add bounding box using data coordinate system (extent=[0,1,0,1])
     rect = Rectangle(
         (bbox_x, bbox_y),
         bbox_width,
@@ -440,9 +456,9 @@ def add_magnified_inset(
     )
     ax.add_patch(rect)
 
-    # Calculate inset position
-    inset_width = int(bbox_width * magnify_scale)
-    inset_height = int(bbox_height * magnify_scale)
+    # Calculate inset position using pixel coordinates
+    inset_width = int(pixel_bbox_width * magnify_scale)
+    inset_height = int(pixel_bbox_height * magnify_scale)
     margin = max(3, min(10, img_width // 15, img_height // 15))
 
     # Position inset
@@ -476,8 +492,10 @@ def add_magnified_inset(
         ]
     )
 
-    # Display magnified region
-    inset_ax.imshow(magnified_region, aspect="equal", interpolation="nearest")
+    # Display magnified region with original image aspect ratio
+    # Calculate the aspect ratio of the original image
+    img_aspect_ratio = img_width / img_height  # 240/180 = 1.33 for ASL
+    inset_ax.imshow(magnified_region, aspect=img_aspect_ratio, interpolation="nearest")
     inset_ax.set_xticks([])
     inset_ax.set_yticks([])
 
@@ -497,11 +515,12 @@ def generate_academic_comparison_grid(
     magnify_configs=None,
     colors=None,
     output_filename="academic_comparison_grid.png",
-    dpi=300,
+    dpi=600,
     figsize_per_cell=(3, 3),
     show_row_labels=True,
     show_column_labels=True,
     enable_magnification=True,
+    transpose_layout=False,  # If True, swap rows and columns (transpose the grid)
     # Event visualization parameters
     use_density=True,  # Whether to show event density (True) or binary (False)
     max_intensity=1.0,  # Maximum color intensity for density visualization
@@ -515,14 +534,14 @@ def generate_academic_comparison_grid(
     time_window=None,  # (start_ratio, end_ratio) to select time window, e.g., (0.0, 0.5)
     polarity_separation=1.0,  # How much to separate positive/negative colors (0.5-2.0)
     # Layout customization parameters
-    wspace=0.01,  # Width spacing between subplots
-    hspace=0.01,  # Height spacing between subplots
+    wspace=0,  # Width spacing between subplots
+    hspace=0,  # Height spacing between subplots
     left_margin=0.05,  # Left margin for row labels
     bottom_margin=0.12,  # Bottom margin for column labels
     row_label_x=0.01,  # X position of row labels (0-1)
     row_label_fontsize=12,  # Font size for row labels
     col_label_fontsize=12,  # Font size for column labels
-    col_label_pad=10,  # Padding for column labels
+    col_label_y=0.02,  # Y distance of column labels from bottom of images
 ):
     """
     Generate academic comparison grid visualization
@@ -531,39 +550,12 @@ def generate_academic_comparison_grid(
     - base_path: Base directory path containing data folders
     - row_configs: List of dicts with row info: [{"label": "(1)", "subpath": "3/9.npy"}, ...]
     - column_configs: List of dicts with column info: [{"label": "LR", "folder_path": "light-p-learn/HRPre"}, ...]
-    - bbox_configs: List of bbox configs for each row: [{"x": 10, "y": 10, "width": 20, "height": 20}, ...]
-    - magnify_configs: Magnification settings for each row
-    - colors: Color settings dict
-    - output_filename: Output filename
-    - dpi: Output resolution
-    - figsize_per_cell: Size of each cell (width, height)
-    - show_row_labels: Whether to show row labels
-    - show_column_labels: Whether to show column labels
-    - enable_magnification: Whether to enable magnification insets (True/False)
-
-    Event visualization:
-    - use_density: Show event density (True) or binary visualization (False) (default: True)
-    - max_intensity: Maximum color intensity for density visualization (default: 1.0)
-    - upscale_columns: List of column indices to upscale (e.g., [0] for LR column) (default: None)
-    - upscale_factor: Upscaling factor for specified columns (default: 2)
-    - smooth_visualization: Apply Gaussian smoothing for better appearance (default: True)
-    - sigma: Gaussian smoothing parameter, higher = more smooth (default: 0.8)
-    - enhance_colors: Enhance color saturation and contrast (default: True)
-
-    Layout customization:
-    - wspace: Width spacing between subplots (default: 0.01)
-    - hspace: Height spacing between subplots (default: 0.01)
-    - left_margin: Left margin for row labels (default: 0.05)
-    - bottom_margin: Bottom margin for column labels (default: 0.12)
-    - tight_layout_pad: Padding for tight_layout (default: 0.5)
-    - row_label_x: X position of row labels 0-1 (default: 0.01)
-    - row_label_fontsize: Font size for row labels (default: 12)
-    - col_label_fontsize: Font size for column labels (default: 12)
-    - col_label_pad: Padding for column labels (default: 10)
-
-    File path construction: base_path + column_folder_path + row_subpath
-    Example: C:/data + light-p-learn/HRPre + 3/9.npy = C:/data/light-p-learn/HRPre/3/9.npy
+    - transpose_layout: If True, swap rows and columns (transpose the grid)
     """
+
+    # Store original configs for potential transpose
+    original_row_configs = row_configs
+    original_column_configs = column_configs
 
     # Default colors
     if colors is None:
@@ -585,37 +577,20 @@ def generate_academic_comparison_grid(
         magnify_configs = [{"position": "top-right", "scale": 2.0} for _ in row_configs]
 
     # Calculate figure size
-    n_rows = len(row_configs)
-    n_cols = len(column_configs)
+    # Handle transpose: swap dimensions
+    if transpose_layout:
+        n_rows = len(original_column_configs)
+        n_cols = len(original_row_configs)
+        # Create transposed configs with correct dimensions
+        row_configs = original_column_configs
+        column_configs = original_row_configs
+    else:
+        n_rows = len(row_configs)
+        n_cols = len(column_configs)
     figsize = (figsize_per_cell[0] * n_cols, figsize_per_cell[1] * n_rows)
 
-    # Create figure with GridSpec for precise spacing control
-    from matplotlib.gridspec import GridSpec
-
-    fig = plt.figure(figsize=figsize)
-
-    # Create GridSpec with precise spacing control
-    gs = GridSpec(
-        n_rows,
-        n_cols,
-        figure=fig,
-        wspace=wspace,  # This will work properly with GridSpec
-        hspace=hspace,  # This will work properly with GridSpec
-        left=left_margin if show_row_labels else 0.02,
-        right=0.98,
-        bottom=bottom_margin if show_column_labels else 0.02,
-        top=0.98,
-    )
-
-    # Create axes array manually
-    axes = []
-    for i in range(n_rows):
-        row_axes = []
-        for j in range(n_cols):
-            ax = fig.add_subplot(gs[i, j])
-            row_axes.append(ax)
-        axes.append(row_axes)
-    axes = np.array(axes)
+    # Create figure using subplots (like DRAW_NMNIST.py)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
     fig.patch.set_facecolor(colors["background"])
 
     # Ensure axes is 2D array
@@ -633,16 +608,38 @@ def generate_academic_comparison_grid(
     # First pass: load all images and find max dimensions (considering upscaling)
     for row_idx, row_config in enumerate(row_configs):
         for col_idx, col_config in enumerate(column_configs):
-            file_path = os.path.join(
-                base_path, col_config["folder_path"], row_config["subpath"]
-            )
+            # Handle path construction for both normal and transposed layouts
+            if transpose_layout:
+                # In transpose: use original indices to access correct data
+                # row_idx maps to original col_idx, col_idx maps to original row_idx
+                original_row_config = original_row_configs[col_idx]
+                original_col_config = original_column_configs[row_idx]
+                file_path = os.path.join(
+                    base_path,
+                    original_col_config["folder_path"],
+                    original_row_config["subpath"],
+                )
+            else:
+                # Normal layout: base_path + column_folder_path + row_subpath
+                file_path = os.path.join(
+                    base_path, col_config["folder_path"], row_config["subpath"]
+                )
             if os.path.exists(file_path):
                 events = np.load(file_path)
                 max_x = int(np.max(events[:, 1])) + 1
                 max_y = int(np.max(events[:, 2])) + 1
 
-                # Apply upscaling factor if this column should be upscaled
-                if upscale_columns and col_idx in upscale_columns:
+                # Apply upscaling factor if this column/row should be upscaled
+                should_upscale = False
+                if upscale_columns:
+                    if transpose_layout:
+                        # In transpose mode, upscale_columns refers to original columns (now rows)
+                        should_upscale = row_idx in upscale_columns
+                    else:
+                        # Normal mode, upscale_columns refers to columns
+                        should_upscale = col_idx in upscale_columns
+
+                if should_upscale:
                     max_x *= upscale_factor
                     max_y *= upscale_factor
 
@@ -659,10 +656,21 @@ def generate_academic_comparison_grid(
         for col_idx, col_config in enumerate(column_configs):
             ax = axes[row_idx, col_idx]
 
-            # Construct file path: base_path + column_folder_path + row_subpath
-            file_path = os.path.join(
-                base_path, col_config["folder_path"], row_config["subpath"]
-            )
+            # Construct file path: handle both normal and transposed layouts
+            if transpose_layout:
+                # In transpose: use original indices to access correct data
+                original_row_config = original_row_configs[col_idx]
+                original_col_config = original_column_configs[row_idx]
+                file_path = os.path.join(
+                    base_path,
+                    original_col_config["folder_path"],
+                    original_row_config["subpath"],
+                )
+            else:
+                # Normal layout: base_path + column_folder_path + row_subpath
+                file_path = os.path.join(
+                    base_path, col_config["folder_path"], row_config["subpath"]
+                )
 
             print(f"Processing [{row_idx + 1},{col_idx + 1}]: {file_path}")
 
@@ -670,11 +678,23 @@ def generate_academic_comparison_grid(
             if (row_idx, col_idx) in temp_images:
                 events, _ = temp_images[(row_idx, col_idx)]
 
-                # Determine if this column should be upscaled
+                # Determine if this column/row should be upscaled
                 current_upscale_factor = 1
-                if upscale_columns and col_idx in upscale_columns:
+                should_upscale = False
+                if upscale_columns:
+                    if transpose_layout:
+                        # In transpose mode, upscale_columns refers to original columns (now rows)
+                        should_upscale = row_idx in upscale_columns
+                    else:
+                        # Normal mode, upscale_columns refers to columns
+                        should_upscale = col_idx in upscale_columns
+
+                if should_upscale:
                     current_upscale_factor = upscale_factor
-                    print(f"   🔍 Upscaling column {col_idx} by {upscale_factor}x")
+                    if transpose_layout:
+                        print(f"   🔍 Upscaling row {row_idx} by {upscale_factor}x")
+                    else:
+                        print(f"   🔍 Upscaling column {col_idx} by {upscale_factor}x")
 
                 # For upscaled columns, use original size and let the function handle upscaling
                 # For non-upscaled columns, use the unified size directly
@@ -688,9 +708,15 @@ def generate_academic_comparison_grid(
                     target_width = max_width
 
                 # Check if this row has polarity parameter specified
-                if "polarity" in row_config:
+                # In transpose mode, use original row config for polarity
+                current_row_config = (
+                    original_row_configs[col_idx] if transpose_layout else row_config
+                )
+                if "polarity" in current_row_config:
                     # Use the new density visualization method (following our_base对比.py)
-                    row_polarity = row_config["polarity"]  # Get the specified polarity
+                    row_polarity = current_row_config[
+                        "polarity"
+                    ]  # Get the specified polarity
                     image = create_single_polarity_density_visualization(
                         events,
                         (target_height, target_width),
@@ -723,12 +749,30 @@ def generate_academic_comparison_grid(
                     (max_height, max_width, 3), colors["background"], dtype=np.float32
                 )
 
-            # Display image with fixed aspect ratio and NO PADDING
-            ax.imshow(image, aspect="equal", origin="upper", interpolation="nearest")
+            # Display image using DRAW_NMNIST.py method
+            ax.imshow(
+                image,
+                aspect="equal",
+                origin="upper",
+                interpolation="nearest",
+                extent=[0, 1, 0, 1],
+            )
 
-            # Set fixed axis limits to ensure consistent image sizes
-            ax.set_xlim(0, max_width)
-            ax.set_ylim(max_height, 0)  # Inverted for 'upper' origin
+            # Set up table-like appearance with borders
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            # Keep all borders visible for table appearance
+            for spine in ax.spines.values():
+                spine.set_visible(True)
+                spine.set_color("black")
+                spine.set_linewidth(0.5)
+
+            # Hide axis labels for inner cells, keep for edge cells with labels
+            if not (show_column_labels and row_idx == n_rows - 1):
+                ax.set_xlabel("")  # Hide x-axis label for non-bottom cells
+            if not (show_row_labels and col_idx == 0):
+                ax.set_ylabel("")  # Hide y-axis label for non-left cells
 
             # Add "File Not Found" text if needed
             if (row_idx, col_idx) not in temp_images:
@@ -745,52 +789,76 @@ def generate_academic_comparison_grid(
 
             # Add magnified inset (only if enabled)
             if enable_magnification and bbox_configs and magnify_configs:
-                bbox_config = bbox_configs[row_idx]
-                magnify_config = magnify_configs[row_idx]
+                # Determine config index based on mode
+                if transpose_layout:
+                    # In transpose mode: current col_idx maps to original row_idx
+                    # But we need to ensure it's within bounds
+                    config_idx = col_idx if col_idx < len(bbox_configs) else 0
+                else:
+                    # Normal mode: use row_idx
+                    config_idx = row_idx
 
-                # Use the same bbox coordinates for all images
-                bbox_x = bbox_config["x"]
-                bbox_y = bbox_config["y"]
-                bbox_width = bbox_config["width"]
-                bbox_height = bbox_config["height"]
+                # Safety check for bounds
+                if config_idx < len(bbox_configs) and config_idx < len(magnify_configs):
+                    bbox_config = bbox_configs[config_idx]
+                    magnify_config = magnify_configs[config_idx]
 
-                # Determine current upscale factor for this column
-                current_upscale_factor = 1
-                if upscale_columns and col_idx in upscale_columns:
-                    current_upscale_factor = upscale_factor
+                    # Convert pixel coordinates to extent=[0,1,0,1] coordinates
+                    # extent=[0,1,0,1] means (0,0) is bottom-left, (1,1) is top-right
+                    # But origin="upper" flips the image display
+                    # For Rectangle: need to flip Y coordinate
+                    img_height, img_width = image.shape[:2]
+                    bbox_x = bbox_config["x"] / img_width
+                    bbox_y = (
+                        1.0 - (bbox_config["y"] + bbox_config["height"]) / img_height
+                    )
+                    bbox_width = bbox_config["width"] / img_width
+                    bbox_height = bbox_config["height"] / img_height
 
-                add_magnified_inset(
-                    ax,
-                    image,
-                    bbox_x,
-                    bbox_y,
-                    bbox_width,
-                    bbox_height,
-                    magnify_position=magnify_config["position"],
-                    magnify_scale=magnify_config["scale"],
-                    magnify_color=colors["magnify"],
-                    magnify_linewidth=2.0,
-                    upscale_factor=current_upscale_factor,
-                )
+                    # Determine current upscale factor for this column/row
+                    current_upscale_factor = 1
+                    should_upscale = False
+                    if upscale_columns:
+                        if transpose_layout:
+                            # In transpose mode, upscale_columns refers to original columns (now rows)
+                            should_upscale = row_idx in upscale_columns
+                        else:
+                            # Normal mode, upscale_columns refers to columns
+                            should_upscale = col_idx in upscale_columns
+
+                    if should_upscale:
+                        current_upscale_factor = upscale_factor
+
+                    add_magnified_inset(
+                        ax,
+                        image,
+                        bbox_x,
+                        bbox_y,
+                        bbox_width,
+                        bbox_height,
+                        magnify_position=magnify_config["position"],
+                        magnify_scale=magnify_config["scale"],
+                        magnify_color=colors["magnify"],
+                        magnify_linewidth=2.0,
+                        upscale_factor=current_upscale_factor,
+                    )
 
             # Set axis properties
             ax.set_xticks([])
             ax.set_yticks([])
             ax.set_facecolor(colors["background"])
 
-            # Add column labels (only for last row, at bottom)
-            if show_column_labels and row_idx == n_rows - 1:
-                # Choose text color based on background
-                text_color = "black" if sum(colors["background"]) > 1.5 else "white"
-                ax.set_xlabel(
-                    col_config["label"],
-                    fontsize=col_label_fontsize,
-                    fontweight="bold",
-                    color=text_color,
-                    labelpad=col_label_pad,
-                )
+            # Column labels will be added separately after layout adjustment
 
-    # Layout is already handled by GridSpec, no need for subplots_adjust
+    # Apply spacing adjustment using the provided parameters
+    plt.subplots_adjust(
+        wspace=wspace,  # Use provided horizontal spacing
+        hspace=hspace,  # Use provided vertical spacing
+        left=left_margin,  # Use provided left margin
+        bottom=bottom_margin,  # Use provided bottom margin
+        right=0.98,
+        top=0.98,
+    )
 
     # Add row labels AFTER layout adjustment - get actual subplot positions
     if show_row_labels:
@@ -802,29 +870,77 @@ def generate_academic_comparison_grid(
             # Calculate the vertical center of this subplot
             row_center_y = ax_pos.y0 + (ax_pos.height / 2)
 
-            # Add row label on the left
+            # Add row label on the left, always outside the plot area
+            # Use row_label_x parameter to control distance from edge
+            label_x = ax_pos.x0 - (
+                row_label_x * 10
+            )  # Scale row_label_x for better control
+
+            # Determine rotation based on label content
+            label_text = row_config["label"]
+            # Check if label contains letters (not just numbers, parentheses, spaces)
+            has_letters = any(c.isalpha() for c in label_text)
+            rotation = 90 if has_letters else 0  # Rotate 90 degrees if has letters
+
             fig.text(
-                row_label_x,  # Customizable X position
+                label_x,
                 row_center_y,  # Actual subplot center Y position
-                row_config["label"],
+                label_text,
                 fontsize=row_label_fontsize,  # Customizable font size
                 fontweight="bold",
                 color=text_color,
-                ha="center",
+                ha="right",  # Right-align so text doesn't overlap with images
                 va="center",
+                rotation=rotation,  # Dynamic rotation based on content
+            )
+
+    # Add column labels AFTER layout adjustment - place them outside the plot area
+    if show_column_labels:
+        # Choose text color based on background
+        text_color = "black" if sum(colors["background"]) > 1.5 else "white"
+        for col_idx, col_config in enumerate(column_configs):
+            # Get the actual position of the bottom subplot in this column
+            ax_pos = axes[n_rows - 1, col_idx].get_position()
+
+            # Calculate label position (below the subplot, outside plot area)
+            label_x = ax_pos.x0 + ax_pos.width / 2  # Center horizontally
+            label_y = ax_pos.y0 - col_label_y  # Use col_label_y parameter for distance
+
+            # Add column label as figure text (outside the subplot area)
+            fig.text(
+                label_x,
+                label_y,
+                col_config["label"],
+                fontsize=col_label_fontsize,
+                fontweight="bold",
+                color=text_color,
+                ha="center",
+                va="top",  # Top-align so text doesn't overlap with images
                 rotation=0,
             )
 
     # Save figure in the same directory as the script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, output_filename)
-    plt.savefig(
-        output_path,
-        dpi=dpi,
-        bbox_inches="tight",
-        facecolor=colors["background"],
-        edgecolor="none",
-    )
+
+    # Check if output is PDF and adjust settings accordingly
+    if output_filename.lower().endswith(".pdf"):
+        plt.savefig(
+            output_path,
+            format="pdf",
+            dpi=dpi,
+            bbox_inches="tight",
+            facecolor=colors["background"],
+            edgecolor="none",
+        )
+    else:
+        plt.savefig(
+            output_path,
+            dpi=dpi,
+            bbox_inches="tight",
+            facecolor=colors["background"],
+            edgecolor="none",
+        )
 
     print(f"✅ Academic comparison grid saved to: {output_path}")
     plt.show()

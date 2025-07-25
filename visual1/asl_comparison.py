@@ -100,12 +100,13 @@ if __name__ == "__main__":
         bbox_configs=BBOX_CONFIGS,
         magnify_configs=MAGNIFY_CONFIGS,
         colors=COLORS,
-        output_filename="asl_academic_comparison.png",
+        output_filename="asl_academic_comparison.pdf",  # Change to .pdf for PDF export
         dpi=300,
         figsize_per_cell=(2.5, 2.5),
         show_row_labels=True,
         show_column_labels=True,
         enable_magnification=True,  # 🔧 Set to False to disable magnification
+        transpose_layout=False,  # 🔄 Set to True to swap rows and columns
         # 🎨 Event visualization - ASL-DVS OPTIMIZED FEATURES!
         use_density=True,  # Show event density (True) vs binary colors (False)
         max_intensity=1.0,  # Maximum color intensity (0.0-1.0)
@@ -119,15 +120,14 @@ if __name__ == "__main__":
         time_window=None,  # Use all time, or try (0.0, 0.5) for first half
         polarity_separation=1,  # Enhance polarity separation (1.0=normal, 2.0=max)
         # 🎨 Layout customization - adjust these values as needed
-        wspace=0.01,  # Width spacing between images (smaller = more compact)
-        hspace=0.001,  # Height spacing between images (smaller = more compact)
-        left_margin=0.025,  # Left margin for row labels (smaller = labels closer to edge)
-        bottom_margin=0.12,  # Bottom margin for column labels
-        row_label_x=0.01,  # Row label X position (smaller = closer to edge)
-        row_label_fontsize=12,  # Row label font size
-        col_label_fontsize=12,  # Column label font size
+        left_margin=0,  # Left margin for row labels (smaller = labels closer to edge)
+        bottom_margin=0,  # Bottom margin for column labels
+        row_label_x=0.001,  # Row label X position (smaller = closer to edge)
+        col_label_y=0.01,  # Column label Y distance from bottom (smaller = closer to bottom)
+        row_label_fontsize=14,  # Row label font size
+        col_label_fontsize=14,  # Column label font size
         col_label_pad=10,  # Column label padding from image
     )
 
     print("✅ ASL-DVS academic comparison grid generation completed!")
-    print("📸 Output saved as: asl_academic_comparison.png")
+    print("📄 Output saved as: asl_academic_comparison.pdf")
