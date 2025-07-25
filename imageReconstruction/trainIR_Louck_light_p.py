@@ -52,6 +52,8 @@ def main():
     iter_per_epoch = int(trainDataset.__len__() / bs)
     time_last = datetime.datetime.now()
 
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
     # savePath = args.savepath
     # savePath += "_bs%d" % args.bs
     # if args.add is not None:
