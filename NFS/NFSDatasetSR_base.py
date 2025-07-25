@@ -18,8 +18,8 @@ class nfsDataset(Dataset):
         self.lrList = []
         self.hrList = []
         self.train = train
-        self.H = 125
-        self.W = 223
+        self.H = 124
+        self.W = 222
         self.nTimeBins = 50
 
         # 读取路径配置文件

@@ -103,7 +103,7 @@ def main():
             eventLr = eventLr.to(device)
             eventHr = eventHr.to(device)
             output = m(eventLr)
-            eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
+            # eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
             loss = MSE(output, eventHr)
             loss_ecm = MSE(torch.sum(output[:, :, :, :, 0:50], dim=4), torch.sum(eventHr[:, :, :, :, 0:50], dim=4))
@@ -169,7 +169,7 @@ def main():
                     eventLr = eventLr.to(device)
                     eventHr = eventHr.to(device)
                     output = m(eventLr)
-                    eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
+                    # eventHr = eventHr[:, :, :output.shape[2], :output.shape[3], :]
 
                     loss = MSE(output, eventHr)
                     loss_ecm = MSE(torch.sum(output[:, :, :, :, 0:50], dim=4), torch.sum(eventHr[:, :, :, :, 0:50], dim=4))
