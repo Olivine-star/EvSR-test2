@@ -53,8 +53,8 @@ class nfsDataset(Dataset):
         self.hrList = []
         self.path = []
 
-        self.H = 125
-        self.W = 223
+        self.H = 124
+        self.W = 222
         self.nTimeBins = 50  # 固定时间维度
 
         hr_files = sorted(os.listdir(paths.get('test_hr')))
