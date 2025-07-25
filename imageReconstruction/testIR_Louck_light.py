@@ -6,7 +6,7 @@ import numpy as np
 import slayerSNN as snn
 import torch
 from utils.ckpt import checkpoint_restore
-from slayerSNN.spikeFileIO import events
+from slayerSNN.spikeFileIO import event
 import os
 from utils.utils import getEventFromTensor
 
@@ -117,7 +117,7 @@ def main():
             e = e[:, [0, 2, 1, 3]]
             e[:, 0] = e[:, 0] + startTime[0].item()
 
-            new_path = path[0].replace("HR", "HRPre")
+            new_path = path[0].replace("HR", "HRPre-Louck-light-p")
             os.makedirs(os.path.split(new_path)[0], exist_ok=True)
 
             np.save(new_path, e.astype(np.int32))
