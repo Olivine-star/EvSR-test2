@@ -48,6 +48,38 @@ ckptPath = paths.get('ckptPath', '')
 
 
 
+
+# ================================
+# nfsDataset：去掉 classList 版本
+# ================================
+# class nfsDataset(Dataset):
+#     def __init__(self):
+#         self.lrList = []
+#         self.hrList = []
+#         self.path = []
+
+#         self.H = 124
+#         self.W = 222
+#         self.nTimeBins = 50  # 固定时间维度
+
+#         hr_files = sorted(os.listdir(paths.get('test_hr')))
+#         lr_files = sorted(os.listdir(paths.get('test_lr')))
+#         assert len(hr_files) == len(lr_files), "HR and LR file counts do not match"
+
+#         hr_root = paths.get('test_hr')
+#         lr_root = paths.get('test_lr')
+
+#         os.makedirs(savepath, exist_ok=True)  # 确保保存目录存在
+
+#         for fname in hr_files:
+#             hr_path = os.path.join(hr_root, fname)
+#             lr_path = os.path.join(lr_root, fname)
+#             self.hrList.append(hr_path)
+#             self.lrList.append(lr_path)
+#             self.path.append(fname)
+
+#         print(f"[nfsDataset] Loaded {len(self.hrList)} test samples.")
+
     
 
 class nfsDataset(Dataset):
@@ -58,42 +90,28 @@ class nfsDataset(Dataset):
 
         self.H = 124
         self.W = 222
-        self.nTimeBins = 50  # 时间维度固定
+        self.nTimeBins = 50
 
         hr_root = paths.get('test_hr')
         lr_root = paths.get('test_lr')
-        os.makedirs(savepath, exist_ok=True)
 
-        # ✅ 递归收集所有 .npy 文件路径（包括子文件夹）
+        # ✅ 递归搜集所有 .npy 文件
         hr_files = sorted(glob.glob(os.path.join(hr_root, '*', '*.npy')))
         lr_files = sorted(glob.glob(os.path.join(lr_root, '*', '*.npy')))
 
-        # ✅ 转为相对路径集合用于比对
-        hr_set = set([os.path.relpath(p, hr_root) for p in hr_files])
-        lr_set = set([os.path.relpath(p, lr_root) for p in lr_files])
+        assert len(hr_files) == len(lr_files), f"HR and LR count mismatch: {len(hr_files)} vs {len(lr_files)}"
 
-        only_in_hr = sorted(hr_set - lr_set)
-        only_in_lr = sorted(lr_set - hr_set)
-        both = sorted(hr_set & lr_set)
+        os.makedirs(savepath, exist_ok=True)
 
-        # 🔍 打印差异信息
-        if only_in_hr:
-            print(f"[❗] {len(only_in_hr)} 文件只存在于 HR 中：")
-            for f in only_in_hr:
-                print(f"  HR only: {f}")
+        for hr_path, lr_path in zip(hr_files, lr_files):
+            self.hrList.append(hr_path)
+            self.lrList.append(lr_path)
 
-        if only_in_lr:
-            print(f"[❗] {len(only_in_lr)} 文件只存在于 LR 中：")
-            for f in only_in_lr:
-                print(f"  LR only: {f}")
+            # path: 相对保存路径，例如 2/1.npy
+            relative_path = os.path.relpath(hr_path, hr_root)
+            self.path.append(relative_path)
 
-        # ✅ 只加载两者都存在的文件
-        for rel_path in both:
-            self.hrList.append(os.path.join(hr_root, rel_path))
-            self.lrList.append(os.path.join(lr_root, rel_path))
-            self.path.append(rel_path)
-
-        print(f"[✅] 加载配对样本数量: {len(self.hrList)}")
+        print(f"[nfsDataset] Loaded {len(self.hrList)} test samples.")
 
 
 
@@ -112,12 +130,8 @@ class nfsDataset(Dataset):
         eventLr1 = eventLr.toSpikeTensor(torch.zeros((2, int(self.H/2), int(self.W/2), self.nTimeBins)))
         eventHr1 = eventHr.toSpikeTensor(torch.zeros((2, self.H, self.W, self.nTimeBins)))
 
-        # assert eventHr1.sum() == len(eventHr.x)
-
-       
-
-
-        # assert eventLr1.sum() == len(eventLr.x)
+        assert eventHr1.sum() == len(eventHr.x)
+        assert eventLr1.sum() == len(eventLr.x)
 
         return eventLr1, eventHr1, startTime, self.path[idx]
 
