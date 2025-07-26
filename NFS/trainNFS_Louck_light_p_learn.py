@@ -110,7 +110,8 @@ def main():
     for epoch in range(epoch0+1, maxEpoch):
         trainMetirc = Metric()
         m.train()
-        for i, (eventLr, eventHr) in enumerate(trainLoader, 0):
+        # for i, (eventLr, eventHr) in enumerate(trainLoader, 0):
+        for i, (eventLr, eventHr, starttime) in enumerate(trainLoader, 0):
 
             num = eventLr.shape[0]
             eventLr = eventLr.to(device)
@@ -192,7 +193,9 @@ def main():
             m.eval()
             t = datetime.datetime.now()
             valMetirc = Metric()
-            for i, (eventLr, eventHr) in enumerate(testLoader, 0):
+            # for i, (eventLr, eventHr) in enumerate(testLoader, 0):
+
+            for i, (eventLr, eventHr, starttime) in enumerate(testLoader, 0):
                 with torch.no_grad():
                     num = eventLr.shape[0]
                     eventLr = eventLr.to(device)
