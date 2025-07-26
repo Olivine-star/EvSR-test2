@@ -131,7 +131,7 @@ def main():
             # === 4. 合并 GT ===
             target = torch.cat([eventHr_pos, eventHr_neg], dim=1)  # [B, 2, H', W', T]
 
-            loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
+            loss_total, loss, loss_ecm, loss_polarity = ES1_loss_p.training_loss(output, target, shape)
 
 
 
@@ -205,7 +205,7 @@ def main():
                     output = torch.cat([output_pos, output_neg], dim=1)
                     target = torch.cat([eventHr_pos, eventHr_neg], dim=1)
 
-                    loss_total, loss, loss_ecm, loss_polarity = loss_fn(output, target, shape)
+                    loss_total, loss, loss_ecm, loss_polarity= ES1_loss_p.validation_loss(output, target, shape)
 
 
                     valMetirc.updateIter(loss.item(), loss_ecm.item(), loss_polarity.item(), loss_total.item(), 1,
