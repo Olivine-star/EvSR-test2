@@ -114,9 +114,8 @@ if __name__ == "__main__":
         bottom_margin=0,  # Bottom margin for column labels
         row_label_x=0.001,  # Row label X position (smaller = closer to edge)
         col_label_y=0.01,  # Column label Y distance from bottom (smaller = closer to bottom)
-        row_label_fontsize=16,  # Row label font size
-        col_label_fontsize=16,  # Column label font size
-        col_label_pad=10,  # Column label padding from image
+        row_label_fontsize=24,  # Row label font size
+        col_label_fontsize=24,  # Column label font size
     )
 
     print("✅ NMNIST academic comparison grid generation completed!")

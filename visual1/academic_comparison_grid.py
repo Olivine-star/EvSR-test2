@@ -185,6 +185,7 @@ def create_event_visualization(
     event_sample_ratio=1.0,  # Ratio of events to use (0.0-1.0)
     time_window=None,  # (start_ratio, end_ratio) to select time window
     polarity_separation=1.0,  # How much to separate positive/negative colors (0.0-2.0)
+    colors=None,  # Color dictionary for gradient support
 ):
     """Create event visualization with density information and red-blue polarity"""
 
@@ -275,6 +276,7 @@ def create_event_visualization(
             smooth_visualization,
             sigma,
             polarity_separation,
+            colors,  # Pass colors for gradient support
         )
     else:
         # Create simple binary visualization (original method)
@@ -305,6 +307,7 @@ def create_density_visualization(
     smooth_visualization=True,
     sigma=0.8,
     polarity_separation=1.0,
+    colors=None,  # Add colors parameter for gradient support
 ):
     """Create visualization showing event density with color intensity"""
     # Initialize RGB image
@@ -323,14 +326,14 @@ def create_density_visualization(
             neg_count = negative_counts[y, x]
 
             if pos_count > 0 and neg_count > 0:
-                # Mixed polarity: blend colors based on ratio and separation
+                # Mixed polarity: AGGRESSIVE blending with enhanced contrast
                 total_count = pos_count + neg_count
                 pos_ratio = pos_count / total_count
                 neg_ratio = neg_count / total_count
 
-                # Apply polarity separation (higher values make colors more distinct)
+                # Apply AGGRESSIVE polarity separation
                 if polarity_separation != 1.0:
-                    # Enhance the dominant polarity
+                    # Enhance the dominant polarity more aggressively
                     if pos_ratio > neg_ratio:
                         pos_ratio = min(pos_ratio * polarity_separation, 1.0)
                         neg_ratio = 1.0 - pos_ratio
@@ -338,24 +341,61 @@ def create_density_visualization(
                         neg_ratio = min(neg_ratio * polarity_separation, 1.0)
                         pos_ratio = 1.0 - neg_ratio
 
-                # Normalize intensity based on total events
+                # AGGRESSIVE intensity calculation with power function
+                raw_intensity = min(total_count / max(max_pos, max_neg), 1.0)
                 intensity = (
-                    min(total_count / max(max_pos, max_neg), 1.0) * max_intensity
-                )
+                    raw_intensity**0.4
+                ) * max_intensity  # More aggressive curve
 
-                # Blend colors
-                rgb_image[y, x] = (
-                    pos_ratio * np.array(positive_color) * intensity
-                    + neg_ratio * np.array(negative_color) * intensity
-                )
+                # AGGRESSIVE color blending with enhanced gradient colors
+                if colors and "positive_max" in colors and "negative_max" in colors:
+                    pos_color = (
+                        np.array(positive_color) * (1 - intensity)
+                        + np.array(colors["positive_max"]) * intensity
+                    )
+                    neg_color = (
+                        np.array(negative_color) * (1 - intensity)
+                        + np.array(colors["negative_max"]) * intensity
+                    )
+                    rgb_image[y, x] = pos_ratio * pos_color + neg_ratio * neg_color
+                else:
+                    # Fallback blending
+                    rgb_image[y, x] = (
+                        pos_ratio * np.array(positive_color) * intensity
+                        + neg_ratio * np.array(negative_color) * intensity
+                    )
             elif pos_count > 0:
-                # Only positive events
-                intensity = min(pos_count / max_pos, 1.0) * max_intensity
-                rgb_image[y, x] = np.array(positive_color) * intensity
+                # Only positive events - AGGRESSIVE gradient from very light to pure red
+                raw_intensity = min(pos_count / max_pos, 1.0)
+                # Apply power function for more aggressive contrast
+                intensity = raw_intensity**0.5  # Square root for more aggressive curve
+                # Create AGGRESSIVE gradient: very light pink -> pure bright red
+                base_color = np.array(positive_color)  # Very light pink base
+                if colors and "positive_max" in colors:
+                    max_color = np.array(colors["positive_max"])  # Pure bright red
+                    # More aggressive interpolation with enhanced contrast
+                    rgb_image[y, x] = (
+                        base_color * (1 - intensity) + max_color * intensity
+                    )
+                else:
+                    # Fallback with more aggressive scaling
+                    rgb_image[y, x] = base_color * (0.1 + 0.9 * intensity)
             elif neg_count > 0:
-                # Only negative events
-                intensity = min(neg_count / max_neg, 1.0) * max_intensity
-                rgb_image[y, x] = np.array(negative_color) * intensity
+                # Only negative events - AGGRESSIVE gradient from very light to pure blue
+                raw_intensity = min(neg_count / max_neg, 1.0)
+                # Apply power function for more aggressive contrast
+                intensity = raw_intensity**0.5  # Square root for more aggressive curve
+                # Create AGGRESSIVE gradient: very light blue -> pure bright blue
+                base_color = np.array(negative_color)  # Very light blue base
+                if colors and "negative_max" in colors:
+                    max_color = np.array(colors["negative_max"])  # Pure bright blue
+                    # More aggressive interpolation with enhanced contrast
+                    rgb_image[y, x] = (
+                        base_color * (1 - intensity) + max_color * intensity
+                    )
+                else:
+                    # Fallback with more aggressive scaling
+                    rgb_image[y, x] = base_color * (0.1 + 0.9 * intensity)
 
     # Apply Gaussian smoothing if requested
     if smooth_visualization and sigma > 0:
@@ -424,9 +464,8 @@ def add_magnified_inset(
     # But we need to get them from the calling function...
     # Actually, let's reconstruct from the normalized coordinates
     pixel_bbox_x = int(bbox_x * img_width)
-    # For Y: bbox_y was flipped, so we need to unflip it for image extraction
-    original_bbox_y = 1.0 - bbox_y - bbox_height  # Unflip the Y coordinate
-    pixel_bbox_y = int(original_bbox_y * img_height)
+    # For Y: Since we now use origin="lower", no need to flip Y coordinate
+    pixel_bbox_y = int(bbox_y * img_height)  # Direct conversion, no flipping needed
     pixel_bbox_width = int(bbox_width * img_width)
     pixel_bbox_height = int(bbox_height * img_height)
 
@@ -494,8 +533,8 @@ def add_magnified_inset(
 
     # Display magnified region with original image aspect ratio
     # Calculate the aspect ratio of the original image
-    img_aspect_ratio = img_width / img_height  # 240/180 = 1.33 for ASL
-    inset_ax.imshow(magnified_region, aspect=img_aspect_ratio, interpolation="nearest")
+    img_aspect_ratio = img_width / img_height  # 222/124 = 1.79 for NFS
+    inset_ax.imshow(magnified_region, aspect=img_aspect_ratio, origin="lower", interpolation="nearest")
     inset_ax.set_xticks([])
     inset_ax.set_yticks([])
 
@@ -741,6 +780,7 @@ def generate_academic_comparison_grid(
                         event_sample_ratio=event_sample_ratio,  # 🔥 NEW parameter
                         time_window=time_window,  # 🔥 NEW parameter
                         polarity_separation=polarity_separation,  # 🔥 NEW parameter
+                        colors=colors,  # 🌈 Pass colors for gradient support
                     )
             else:
                 print(f"⚠️  File not found: {file_path}")
@@ -749,11 +789,11 @@ def generate_academic_comparison_grid(
                     (max_height, max_width, 3), colors["background"], dtype=np.float32
                 )
 
-            # Display image using DRAW_NMNIST.py method
+            # Display image using DRAW_NMNIST.py method with proper aspect ratio
             ax.imshow(
                 image,
-                aspect="equal",
-                origin="upper",
+                aspect="auto",  # Allow automatic aspect ratio based on image dimensions
+                origin="lower",  # Use lower origin to match event camera coordinate system
                 interpolation="nearest",
                 extent=[0, 1, 0, 1],
             )
