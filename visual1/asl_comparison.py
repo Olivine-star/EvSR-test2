@@ -33,7 +33,7 @@ BASE_PATH = r"C:\Users\steve\Dataset\EVSR\asl"
 # Row configurations (different ASL signs/gestures)
 ROW_CONFIGS = [
     # category a, file a_3880.npy
-    {"label": "(1)", "subpath": "y/y_0220.npy"},
+    # {"label": "(1)", "subpath": "y/y_0220.npy"},
     {"label": "(2)", "subpath": "v/v_0002.npy"},
     {"label": "(3)", "subpath": "h/h_4061.npy"},
     {"label": "(4)", "subpath": "o/o_4005.npy"},
@@ -44,15 +44,15 @@ COLUMN_CONFIGS = [
     {"label": "LR", "folder_path": "SR_Test/SR_Test/LR"},
     {"label": "HR-GT", "folder_path": "SR_Test/SR_Test/HR"},
     {"label": "Baseline", "folder_path": "baseline/baseline-HRPre"},
-    {"label": "(a)", "folder_path": "light/HRPre"},
-    {"label": "(b)", "folder_path": "light-p-learn/HRPre"},
-    {"label": "(c)", "folder_path": "Louck_light_p/HRPre"},
-    {"label": "(d)", "folder_path": "Louck_light_p_learn/HRPre"},
+    {"label": "Dual-Layer SNN", "folder_path": "light/HRPre"},
+    {"label": "Dual-Layer SNN w/L", "folder_path": "light-p-learn/HRPre"},
+    {"label": "Ultralight SNN", "folder_path": "Louck_light_p/HRPre"},
+    {"label": "Ultralight SNN w/L", "folder_path": "Louck_light_p_learn/HRPre"},
 ]
 
 # Magnification bounding box for each row (x, y, width, height in pixels)
 BBOX_CONFIGS = [
-    {"x": 110, "y": 70, "width": 30, "height": 30},  # Row 1
+    #{"x": 110, "y": 70, "width": 30, "height": 30},  # Row 1
     {"x": 110, "y": 80, "width": 30, "height": 30},  # Row 2
     {"x": 140, "y": 30, "width": 30, "height": 30},  # Row 3
     {"x": 100, "y": 110, "width": 30, "height": 30},  # Row 4
@@ -60,7 +60,7 @@ BBOX_CONFIGS = [
 
 # Magnification settings for each row
 MAGNIFY_CONFIGS = [
-    {"position": "top-right", "scale": 2},  # Row 1
+    #{"position": "top-right", "scale": 2},  # Row 1
     {"position": "top-right", "scale": 2},  # Row 2
     {"position": "bottom-left", "scale": 2},  # Row 3
     {"position": "bottom-right", "scale": 2},  # Row 4
@@ -71,7 +71,7 @@ COLORS = {
     "positive": [1.0, 0.0, 0.0],  # red for positive events
     "negative": [0.0, 0.0, 1.0],  # blue for negative events
     "background": [1.0, 1.0, 1.0],  # White background
-    "magnify": "Yellow",  # White magnification border
+    "magnify": "LightGreen",  # Light green magnification border
 }
 # =============================================================================
 # MAIN GENERATION FUNCTION
@@ -125,7 +125,7 @@ if __name__ == "__main__":
         row_label_x=0.001,  # Row label X position (smaller = closer to edge)
         col_label_y=0.01,  # Column label Y distance from bottom (smaller = closer to bottom)
         row_label_fontsize=24,  # Row label font size
-        col_label_fontsize=24,  # Column label font size
+        col_label_fontsize=18,  # Column label font size
     )
 
     print("✅ ASL-DVS academic comparison grid generation completed!")
