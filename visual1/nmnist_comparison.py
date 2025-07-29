@@ -95,7 +95,9 @@ if __name__ == "__main__":
         figsize_per_cell=(2, 2),  # Much smaller cells to make spacing appear tighter
         show_row_labels=True,
         show_column_labels=True,
-        enable_magnification=False,  # 🔧 Set to True to enable magnification
+        # 🔧 Magnification control - separate bounding box and magnification
+        show_bounding_boxes=False,  # Show bounding box frames (True/False)
+        enable_magnification=False,  # Show magnified insets (True/False)
         transpose_layout=True,  # 🔄 Set to True to swap rows and columns
         # 🎨 Event visualization - NEW ENHANCED FEATURES!
         use_density=True,  # Show event density (True) vs binary colors (False)
@@ -120,3 +122,16 @@ if __name__ == "__main__":
 
     print("✅ NMNIST academic comparison grid generation completed!")
     print("� Output saved as: nmnist_academic_comparison.pdf")
+    print("\n🔧 Magnification Control:")
+    print("   • show_bounding_boxes=False: No bounding box frames (current)")
+    print("   • enable_magnification=False: No magnified insets (current)")
+    print("   • Can be controlled independently (box only, magnify only, or both)")
+    print("\n📝 Configuration Options:")
+    print("   🔧 For bounding boxes only:")
+    print("      show_bounding_boxes=True, enable_magnification=False")
+    print("   🔍 For magnification only:")
+    print("      show_bounding_boxes=False, enable_magnification=True")
+    print("   📦 For both:")
+    print("      show_bounding_boxes=True, enable_magnification=True")
+    print("   ❌ For neither (current):")
+    print("      show_bounding_boxes=False, enable_magnification=False")

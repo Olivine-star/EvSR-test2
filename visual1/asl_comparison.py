@@ -52,7 +52,7 @@ COLUMN_CONFIGS = [
 
 # Magnification bounding box for each row (x, y, width, height in pixels)
 BBOX_CONFIGS = [
-    #{"x": 110, "y": 70, "width": 30, "height": 30},  # Row 1
+    # {"x": 110, "y": 70, "width": 30, "height": 30},  # Row 1
     {"x": 110, "y": 80, "width": 30, "height": 30},  # Row 2
     {"x": 140, "y": 30, "width": 30, "height": 30},  # Row 3
     {"x": 100, "y": 110, "width": 30, "height": 30},  # Row 4
@@ -60,7 +60,7 @@ BBOX_CONFIGS = [
 
 # Magnification settings for each row
 MAGNIFY_CONFIGS = [
-    #{"position": "top-right", "scale": 2},  # Row 1
+    # {"position": "top-right", "scale": 2},  # Row 1
     {"position": "top-right", "scale": 2},  # Row 2
     {"position": "bottom-left", "scale": 2},  # Row 3
     {"position": "bottom-right", "scale": 2},  # Row 4
@@ -105,6 +105,7 @@ if __name__ == "__main__":
         figsize_per_cell=(2.5, 2.5),
         show_row_labels=True,
         show_column_labels=True,
+        show_bounding_boxes=True,  # Set to False to disable bounding boxes
         enable_magnification=True,  # 🔧 Set to False to disable magnification
         transpose_layout=False,  # 🔄 Set to True to swap rows and columns
         # 🎨 Event visualization - ASL-DVS OPTIMIZED FEATURES!
@@ -130,3 +131,14 @@ if __name__ == "__main__":
 
     print("✅ ASL-DVS academic comparison grid generation completed!")
     print("📄 Output saved as: asl_academic_comparison.pdf")
+    print("\n🔧 Magnification Control:")
+    print("   • show_bounding_boxes=False: No bounding box frames (current)")
+    print("   • enable_magnification=True: Show magnified insets (current)")
+    print("   • Can be controlled independently (box only, magnify only, or both)")
+    print("\n📝 Configuration Options:")
+    print("   🔧 For bounding boxes only:")
+    print("      show_bounding_boxes=True, enable_magnification=False")
+    print("   🔍 For magnification only (current):")
+    print("      show_bounding_boxes=False, enable_magnification=True")
+    print("   📦 For both:")
+    print("      show_bounding_boxes=True, enable_magnification=True")
