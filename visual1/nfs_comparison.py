@@ -28,15 +28,23 @@ from academic_comparison_grid import generate_academic_comparison_grid
 # =============================================================================
 
 # Base path - modify this to your NFS dataset location
-BASE_PATH = r"C:\code\EventSR-Project\EventSR-dataset\dataset\NFS\data-visual-test-redata-ef6"
+BASE_PATH = (
+    r"C:\code\EventSR-Project\EventSR-dataset\dataset\NFS\data-visual-test-redata-ef6"
+)
 
 # Row configurations (different NFS sequences/samples)
 # Based on actual NFS dataset structure with sequences: 11, 19, 2, 4, 50, 65, 74, 80, 86, 99
 ROW_CONFIGS = [
     # Select representative sequences and frames for comparison
-    {"label": "(1)", "subpath": "10/210.npy"},  # Sequence 2, frame 7 (early high activity)
+    {
+        "label": "(1)",
+        "subpath": "10/210.npy",
+    },  # Sequence 2, frame 7 (early high activity)
     {"label": "(2)", "subpath": "29/200.npy"},  # Sequence 4, frame 25 (mid activity)
-    {"label": "(3)", "subpath": "85/200.npy"},  # Sequence 50, frame 50 (varied activity)
+    {
+        "label": "(3)",
+        "subpath": "85/200.npy",
+    },  # Sequence 50, frame 50 (varied activity)
 ]
 
 # Column configurations (different methods)
@@ -44,13 +52,22 @@ ROW_CONFIGS = [
 COLUMN_CONFIGS = [
     {"label": "LR", "folder_path": "LR"},  # Low resolution input
     {"label": "HR-GT", "folder_path": "HR"},  # High resolution ground truth
-    {"label": "Baseline", "folder_path": "NFS-base(50ms-redata)-non-leak"},  # Baseline model results
-    {"label": "Dual-Layer SNN", "folder_path": "NFS-light(50ms-redata)-leak"},  # Light model
+    {
+        "label": "Baseline",
+        "folder_path": "NFS-base(50ms-redata)-non-leak",
+    },  # Baseline model results
+    {
+        "label": "Dual-Layer SNN",
+        "folder_path": "NFS-light(50ms-redata)-leak",
+    },  # Light model
     {
         "label": "Dual-Layer SNN w/L",
         "folder_path": "NFS-light-p-learn-(50ms-redata)-leak",
     },  # Light model with learnable params
-    {"label": "Ultralight SNN", "folder_path": "NFS-Louck-light-p(50ms-redata)-leak"},  # Louck light model with params
+    {
+        "label": "Ultralight SNN",
+        "folder_path": "NFS-Louck-light-p(50ms-redata)-leak",
+    },  # Louck light model with params
     {
         "label": "Ultralight SNN w/L",
         "folder_path": "NFS-Louck-light-p-learn(50ms-redata)-leak",
@@ -61,18 +78,32 @@ COLUMN_CONFIGS = [
 # Adjusted for NFS dataset dimensions (124x222) with origin="lower" coordinate system
 # Y coordinates are now measured from bottom (0) to top (124)
 BBOX_CONFIGS = [
-    {"x": 160, "y": 69, "width": 40, "height": 25},  # Row 1 - right side, upper (124-30-25=69)
-    {"x": 20, "y": 49, "width": 40, "height": 25},   # Row 2 - left side, middle (124-50-25=49)
-    {"x": 140, "y": 29, "width": 40, "height": 25},  # Row 3 - right side, lower (124-70-25=29)
-    {"x": 40, "y": 79, "width": 40, "height": 25},   # Row 4 - left side, upper (124-20-25=79)
+    {
+        "x": 100,
+        "y": 50,
+        "width": 30,
+        "height": 30,
+    },  # Row 1 - right side, upper (124-30-25=69)
+    {
+        "x": 100,
+        "y": 50,
+        "width": 40,
+        "height": 25,
+    },  # Row 2 - left side, middle (124-50-25=49)
+    {
+        "x": 100,
+        "y": 50,
+        "width": 40,
+        "height": 25,
+    },  # Row 3 - right side, lower (124-70-25=29)
 ]
 
 # Magnification settings for each row
 MAGNIFY_CONFIGS = [
-    {"position": "bottom-left", "scale": 2.5},  # Row 1 - avoid overlap with bbox
-    {"position": "top-right", "scale": 2.5},  # Row 2 - avoid overlap with bbox
-    {"position": "top-left", "scale": 2.5},  # Row 3 - avoid overlap with bbox
-    {"position": "bottom-right", "scale": 2.5},  # Row 4 - avoid overlap with bbox
+    {"position": "bottom-left", "scale": 2.5},  # Row 1
+    {"position": "top-right", "scale": 2.5},  # Row 2
+    {"position": "top-left", "scale": 2.5},  # Row 3
+    {"position": "bottom-right", "scale": 2.5},  # Row 4
 ]
 
 # Color settings for event visualization - AGGRESSIVE density-based gradient colors
@@ -83,7 +114,7 @@ COLORS = {
     "positive_max": [1.0, 0.0, 0.0],  # Pure bright red for high density positive
     "negative_max": [0.0, 0.0, 1.0],  # Pure bright blue for high density negative
     "background": [1.0, 1.0, 1.0],  # White background
-    "magnify": "Yellow",  # Yellow magnification border
+    "magnify": "LightGreen",  # Yellow magnification border
 }
 
 # =============================================================================
@@ -118,7 +149,9 @@ if __name__ == "__main__":
         figsize_per_cell=(3.58, 2),  # NFS aspect ratio: 222×124 ≈ 1.79:1
         show_row_labels=True,
         show_column_labels=True,
-        enable_magnification=False,  # 🔧 Set to False to disable magnification
+        # 🔧 Magnification control - separate bounding box and magnification
+        show_bounding_boxes=True,  # Show bounding box frames (True/False)
+        enable_magnification=False,  # Show magnified insets (True/False)
         transpose_layout=False,  # 🔄 Set to True to swap rows and columns
         # 🎨 Event visualization - AGGRESSIVE NFS DENSITY GRADIENT FEATURES!
         use_density=True,  # MUST be True for density-based gradient effect
@@ -148,6 +181,10 @@ if __name__ == "__main__":
     print("   • Cell size: 4.5×2.5 to maintain rectangular shape")
     print("   • No forced square distortion")
     print("   • Fixed coordinate system: bounding boxes now match magnified regions")
+    print("\n🔧 Magnification Control:")
+    print("   • show_bounding_boxes=True: Show yellow bounding box frames")
+    print("   • enable_magnification=True: Show magnified inset windows")
+    print("   • Can be controlled independently (box only, magnify only, or both)")
     print("\n�🔥 AGGRESSIVE Density Gradient Features:")
     print("   • Very light pink → Pure bright red for positive events")
     print("   • Very light blue → Pure bright blue for negative events")
@@ -155,6 +192,13 @@ if __name__ == "__main__":
     print("   • Aggressive polarity separation (1.5x)")
     print("   • Sharp gradient transitions (σ=0.2)")
     print("   • Enhanced mixed-polarity blending")
+    print("\n📝 Configuration Options:")
+    print("   🔧 For bounding boxes only:")
+    print("      show_bounding_boxes=True, enable_magnification=False")
+    print("   🔍 For magnification only:")
+    print("      show_bounding_boxes=False, enable_magnification=True")
+    print("   📦 For both (current setting):")
+    print("      show_bounding_boxes=True, enable_magnification=True")
     print("\n📝 Next steps:")
     print(
         "1. Verify the file paths in ROW_CONFIGS and COLUMN_CONFIGS match your dataset structure"

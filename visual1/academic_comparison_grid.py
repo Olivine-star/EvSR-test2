@@ -452,9 +452,15 @@ def add_magnified_inset(
     magnify_color="white",
     magnify_linewidth=2.0,
     upscale_factor=1,
+    show_bounding_box=True,  # Whether to show the bounding box frame
+    show_magnified_inset=True,  # Whether to show the magnified inset
 ):
-    """Add magnified inset with white border
+    """Add magnified inset with white border and/or bounding box
     bbox coordinates are in normalized coordinates (0-1) for extent=[0,1,0,1]
+
+    Parameters:
+    - show_bounding_box: If True, shows the bounding box frame
+    - show_magnified_inset: If True, shows the magnified inset
     """
     img_height, img_width = image.shape[:2]
 
@@ -484,16 +490,21 @@ def add_magnified_inset(
     if magnified_region.size == 0:
         return
 
-    # Add bounding box using data coordinate system (extent=[0,1,0,1])
-    rect = Rectangle(
-        (bbox_x, bbox_y),
-        bbox_width,
-        bbox_height,
-        linewidth=magnify_linewidth,
-        edgecolor=magnify_color,
-        facecolor="none",
-    )
-    ax.add_patch(rect)
+    # Add bounding box using data coordinate system (extent=[0,1,0,1]) - only if enabled
+    if show_bounding_box:
+        rect = Rectangle(
+            (bbox_x, bbox_y),
+            bbox_width,
+            bbox_height,
+            linewidth=magnify_linewidth,
+            edgecolor=magnify_color,
+            facecolor="none",
+        )
+        ax.add_patch(rect)
+
+    # Create magnified inset - only if enabled
+    if not show_magnified_inset:
+        return None
 
     # Calculate inset position using pixel coordinates
     inset_width = int(pixel_bbox_width * magnify_scale)
@@ -534,7 +545,12 @@ def add_magnified_inset(
     # Display magnified region with original image aspect ratio
     # Calculate the aspect ratio of the original image
     img_aspect_ratio = img_width / img_height  # 222/124 = 1.79 for NFS
-    inset_ax.imshow(magnified_region, aspect=img_aspect_ratio, origin="lower", interpolation="nearest")
+    inset_ax.imshow(
+        magnified_region,
+        aspect=img_aspect_ratio,
+        origin="lower",
+        interpolation="nearest",
+    )
     inset_ax.set_xticks([])
     inset_ax.set_yticks([])
 
@@ -558,7 +574,8 @@ def generate_academic_comparison_grid(
     figsize_per_cell=(3, 3),
     show_row_labels=True,
     show_column_labels=True,
-    enable_magnification=True,
+    show_bounding_boxes=True,  # Show bounding box frames (True/False)
+    enable_magnification=True,  # Show magnified insets (True/False)
     transpose_layout=False,  # If True, swap rows and columns (transpose the grid)
     # Event visualization parameters
     use_density=True,  # Whether to show event density (True) or binary (False)
@@ -827,8 +844,12 @@ def generate_academic_comparison_grid(
                     fontsize=8,
                 )
 
-            # Add magnified inset (only if enabled)
-            if enable_magnification and bbox_configs and magnify_configs:
+            # Add bounding box and/or magnified inset (if either is enabled)
+            if (
+                (show_bounding_boxes or enable_magnification)
+                and bbox_configs
+                and magnify_configs
+            ):
                 # Determine config index based on mode
                 if transpose_layout:
                     # In transpose mode: current col_idx maps to original row_idx
@@ -881,6 +902,8 @@ def generate_academic_comparison_grid(
                         magnify_color=colors["magnify"],
                         magnify_linewidth=2.0,
                         upscale_factor=current_upscale_factor,
+                        show_bounding_box=show_bounding_boxes,  # Pass the parameter
+                        show_magnified_inset=enable_magnification,  # Pass the parameter
                     )
 
             # Set axis properties
