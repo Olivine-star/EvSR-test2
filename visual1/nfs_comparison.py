@@ -40,7 +40,7 @@ ROW_CONFIGS = [
         "label": "(1)",
         "subpath": "10/210.npy",
     },  # Sequence 2, frame 7 (early high activity)
-    {"label": "(2)", "subpath": "29/200.npy"},  # Sequence 4, frame 25 (mid activity)
+    {"label": "(2)", "subpath": "35/84.npy"},  # Sequence 4, frame 25 (mid activity)
     {
         "label": "(3)",
         "subpath": "85/200.npy",
@@ -79,22 +79,22 @@ COLUMN_CONFIGS = [
 # Y coordinates are now measured from bottom (0) to top (124)
 BBOX_CONFIGS = [
     {
-        "x": 100,
+        "x": 120,
         "y": 50,
         "width": 30,
         "height": 30,
     },  # Row 1 - right side, upper (124-30-25=69)
     {
-        "x": 100,
-        "y": 50,
+        "x": 110,
+        "y": 90,
         "width": 40,
         "height": 25,
     },  # Row 2 - left side, middle (124-50-25=49)
     {
-        "x": 100,
-        "y": 50,
-        "width": 40,
-        "height": 25,
+        "x": 75,
+        "y": 20,
+        "width": 95,
+        "height": 85,
     },  # Row 3 - right side, lower (124-70-25=29)
 ]
 
@@ -114,7 +114,7 @@ COLORS = {
     "positive_max": [1.0, 0.0, 0.0],  # Pure bright red for high density positive
     "negative_max": [0.0, 0.0, 1.0],  # Pure bright blue for high density negative
     "background": [1.0, 1.0, 1.0],  # White background
-    "magnify": "LightGreen",  # Yellow magnification border
+    "magnify": "Green",  # Yellow magnification border
 }
 
 # =============================================================================
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         bbox_configs=BBOX_CONFIGS,
         magnify_configs=MAGNIFY_CONFIGS,
         colors=COLORS,
-        output_filename="nfs_academic_comparison.png",  # Change to .pdf for PDF export
+        output_filename="nfs_academic_comparison.pdf",  # Change to .pdf for PDF export
         dpi=1000,
         figsize_per_cell=(3.58, 2),  # NFS aspect ratio: 222×124 ≈ 1.79:1
         show_row_labels=True,
