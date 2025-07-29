@@ -28,15 +28,15 @@ from academic_comparison_grid import generate_academic_comparison_grid
 # =============================================================================
 
 # Base path - modify this to your NFS dataset location
-BASE_PATH = r"C:\Users\steve\Dataset\EVSR\NFS"
+BASE_PATH = r"C:\code\EventSR-Project\EventSR-dataset\dataset\NFS\data-visual-test-redata-ef6"
 
 # Row configurations (different NFS sequences/samples)
 # Based on actual NFS dataset structure with sequences: 11, 19, 2, 4, 50, 65, 74, 80, 86, 99
 ROW_CONFIGS = [
     # Select representative sequences and frames for comparison
-    {"label": "(1)", "subpath": "2/2.npy"},  # Sequence 2, frame 7 (early high activity)
-    {"label": "(2)", "subpath": "65/100.npy"},  # Sequence 4, frame 25 (mid activity)
-    {"label": "(3)", "subpath": "50/50.npy"},  # Sequence 50, frame 50 (varied activity)
+    {"label": "(1)", "subpath": "10/210.npy"},  # Sequence 2, frame 7 (early high activity)
+    {"label": "(2)", "subpath": "29/200.npy"},  # Sequence 4, frame 25 (mid activity)
+    {"label": "(3)", "subpath": "85/200.npy"},  # Sequence 50, frame 50 (varied activity)
 ]
 
 # Column configurations (different methods)
@@ -44,16 +44,16 @@ ROW_CONFIGS = [
 COLUMN_CONFIGS = [
     {"label": "LR", "folder_path": "LR"},  # Low resolution input
     {"label": "HR-GT", "folder_path": "HR"},  # High resolution ground truth
-    {"label": "Baseline", "folder_path": "baseline"},  # Baseline model results
-    {"label": "(a)", "folder_path": "light"},  # Light model
+    {"label": "Baseline", "folder_path": "NFS-base(50ms-redata)-non-leak"},  # Baseline model results
+    {"label": "Dual-Layer SNN", "folder_path": "NFS-light(50ms-redata)-leak"},  # Light model
     {
-        "label": "(b)",
-        "folder_path": "light-p-learn",
+        "label": "Dual-Layer SNN w/L",
+        "folder_path": "NFS-light-p-learn-(50ms-redata)-leak",
     },  # Light model with learnable params
-    {"label": "(c)", "folder_path": "Louck-light-p"},  # Louck light model with params
+    {"label": "Ultralight SNN", "folder_path": "NFS-Louck-light-p(50ms-redata)-leak"},  # Louck light model with params
     {
-        "label": "(d)",
-        "folder_path": "Louck-light-p-learn",
+        "label": "Ultralight SNN w/L",
+        "folder_path": "NFS-Louck-light-p-learn(50ms-redata)-leak",
     },  # Louck light model with learnable params
 ]
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         # Event filtering optimized for AGGRESSIVE gradient visualization
         event_sample_ratio=1.0,  # Use all events for complete density information
         time_window=None,  # Use all time for complete motion capture
-        polarity_separation=1.5,  # Enhanced separation for more distinct gradients
+        polarity_separation=1.0,  # Enhanced separation for more distinct gradients
         # 🎨 Layout customization - adjust these values as needed
         left_margin=0,  # Left margin for row labels (smaller = labels closer to edge)
         bottom_margin=0,  # Bottom margin for column labels
